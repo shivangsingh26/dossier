@@ -1,0 +1,48 @@
+# Secrets — never commit
+.env
+
+# Personal profile data — never commit (name, salary, resume, writing samples)
+profile/profile.json
+profile/me/
+profile/tone.md
+profile/voice.md
+profile/career_intent.md
+profile/writing_samples/
+# profile/target_companies.json IS committed — it's a list of 50 companies, no personal data
+
+# Runtime data — generated, not source code
+data/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+
+# Virtual environment (uv creates .venv by default)
+.venv/
+venv/
+env/
+
+# Claude Code project settings (local only)
+.claude/
+
+# Internal working files — not part of the public product
+CLAUDE.md
+TODO.txt
+helper_files/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# macOS
+.DS_Store
+
+# Logs (generated at runtime, not needed in git)
+*.log
