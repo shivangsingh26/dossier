@@ -1,0 +1,97 @@
+{
+  "_note": "Companies in our watchlist that cannot currently surface ML/AI jobs. Three failure categories below. Review periodically — category 2 and 3 may self-correct as companies post new roles or as the code improves. Category 1 requires manual slug investigation.",
+
+  "category_1_slug_unresolvable": {
+    "_reason": "LinkedIn company page slug is unknown or 404. All tried variants failed. Cannot resolve numeric company ID — watchlist skips these entirely.",
+    "companies": [
+      {
+        "name": "Nykaa",
+        "tried_slugs": ["nykaa", "nykaa-e-retail", "fsn-ecommerce", "nykaa-fashion", "nykaa-limited"],
+        "careers_url": "https://nykaa.com/careers",
+        "why_we_want": "Listed beauty/fashion unicorn — recommendation AI, visual search, demand forecasting"
+      },
+      {
+        "name": "Practo",
+        "tried_slugs": ["practo", "practo-technologies"],
+        "careers_url": "https://careers.practo.com/",
+        "why_we_want": "Healthtech platform — symptom checker AI, doctor recommendation, NLP for medical records"
+      },
+      {
+        "name": "Booking.com",
+        "tried_slugs": ["booking-com", "booking", "bookingcom"],
+        "careers_url": "https://careers.booking.com/",
+        "why_we_want": "Search/recommendation ML, demand forecasting — Bengaluru ML team"
+      }
+    ]
+  },
+
+  "category_2_linkedin_api_zero": {
+    "_reason": "LinkedIn company ID resolved correctly but guest API returns 0 jobs for these companies. Confirmed limitation: the public guest API does not surface jobs for large companies without authentication. These companies DO have active ML/AI roles — they just aren't visible through the unauthenticated endpoint. MAANG is already covered by run_job_discovery.py keyword search so this is acceptable for now.",
+    "companies": [
+      { "name": "Google",           "linkedin_id": "16140",     "note": "Jobs visible on careers.google.com but not via guest API" },
+      { "name": "Microsoft",        "linkedin_id": "3238203",   "note": "Jobs visible on careers.microsoft.com but not via guest API" },
+      { "name": "Amazon",           "linkedin_id": "15218805",  "note": "Jobs visible on amazon.jobs but not via guest API" },
+      { "name": "Meta",             "linkedin_id": "23769",     "note": "Jobs visible on metacareers.com but not via guest API" },
+      { "name": "Netflix",          "linkedin_id": "165158",    "note": "Small India team, very selective" },
+      { "name": "Uber",             "linkedin_id": "106863501", "note": "Uber AI Labs India — try direct Greenhouse scrape in future" },
+      { "name": "Walmart Global Tech", "linkedin_id": "11174522", "note": "Large India GCC but guest API returns 0" },
+      { "name": "Adobe",            "linkedin_id": "5273045",   "note": "Adobe Research India — try direct ATS in future" },
+      { "name": "Salesforce",       "linkedin_id": "18790668",  "note": "Einstein AI — guest API returns 0" },
+      { "name": "AMD",              "linkedin_id": "6624519",   "note": "AI accelerator chips team in Hyderabad/Bengaluru" },
+      { "name": "Qualcomm",         "linkedin_id": "18170099",  "note": "On-device AI — guest API returns 0" },
+      { "name": "PayPal",           "linkedin_id": "150981",    "note": "Fraud ML — guest API returns 0" },
+      { "name": "LinkedIn",         "linkedin_id": "2587638",   "note": "Ironic — their own guest API doesn't surface their jobs" },
+      { "name": "Zomato",           "linkedin_id": "422813",    "note": "No current ML openings or guest API limitation" },
+      { "name": "Disney+ Hotstar",  "linkedin_id": "5895894",   "note": "No current ML openings or guest API limitation" },
+      { "name": "MakeMyTrip",       "linkedin_id": "10047047",  "note": "No current ML openings or guest API limitation" },
+      { "name": "Zoho",             "linkedin_id": "38373",     "note": "No current ML openings or guest API limitation" },
+      { "name": "Swiggy",           "linkedin_id": "6635081",   "note": "No current ML openings or guest API limitation" },
+      { "name": "Razorpay",         "linkedin_id": "2770855",   "note": "No current ML openings or guest API limitation" },
+      { "name": "CRED",             "linkedin_id": "67934035",  "note": "No current ML openings or guest API limitation" },
+      { "name": "Dream11",          "linkedin_id": "264559",    "note": "No current ML openings or guest API limitation" },
+      { "name": "Groww",            "linkedin_id": "10054348",  "note": "No current ML openings or guest API limitation" },
+      { "name": "Juspay",           "linkedin_id": "3590874",   "note": "No current ML openings or guest API limitation" },
+      { "name": "Browserstack",     "linkedin_id": "2553488",   "note": "No current ML openings or guest API limitation" },
+      { "name": "Freshworks",       "linkedin_id": "826535",    "note": "No current ML openings or guest API limitation" },
+      { "name": "Ola",              "linkedin_id": "77054826",  "note": "No current ML openings or guest API limitation" },
+      { "name": "Yellow.ai",        "linkedin_id": "92596415",  "note": "No current ML openings or guest API limitation" },
+      { "name": "Observe.AI",       "linkedin_id": "18796376",  "note": "No current ML openings or guest API limitation" },
+      { "name": "Mad Street Den",   "linkedin_id": "3122863",   "note": "No current ML openings or guest API limitation" },
+      { "name": "Darwinbox",        "linkedin_id": "109027297", "note": "No current ML openings or guest API limitation" },
+      { "name": "Haptik",           "linkedin_id": "13028254",  "note": "No current ML openings or guest API limitation" },
+      { "name": "upGrad",           "linkedin_id": "15101462",  "note": "No current ML openings or guest API limitation" },
+      { "name": "BharatPe",         "linkedin_id": "14510217",  "note": "No current ML openings or guest API limitation" },
+      { "name": "Tata 1mg",         "linkedin_id": "5230742",   "note": "No current ML openings or guest API limitation" },
+      { "name": "Urban Company",    "linkedin_id": "22585756",  "note": "No current ML openings or guest API limitation" },
+      { "name": "Rapido",           "linkedin_id": "5352019",   "note": "No current ML openings or guest API limitation" },
+      { "name": "Porter",           "linkedin_id": "2183422",   "note": "No current ML openings or guest API limitation" },
+      { "name": "CleverTap",        "linkedin_id": "6611801",   "note": "2 jobs fetched but 0 ML/AI — also see category 3" },
+      { "name": "MoEngage",         "linkedin_id": "4800048",   "note": "6 jobs fetched but 0 ML/AI — also see category 3" },
+      { "name": "ixigo",            "linkedin_id": "206141",    "note": "No current ML openings or guest API limitation" },
+      { "name": "OYO",              "linkedin_id": "3716484",   "note": "No current ML openings or guest API limitation" },
+      { "name": "Navi Technologies","linkedin_id": "3049412",   "note": "No current ML openings or guest API limitation" },
+      { "name": "MPL",              "linkedin_id": "14566676",  "note": "No current ML openings or guest API limitation" }
+    ]
+  },
+
+  "category_3_ml_title_filter_miss": {
+    "_reason": "LinkedIn returns jobs for these companies but our ML title filter (_ML_TITLE_KEYWORDS) doesn't match their actual job titles. These companies use non-standard ML/AI role names like 'Decision Scientist', 'Analytics Engineer', 'Business Intelligence Engineer'. Fix: expand _ML_TITLE_KEYWORDS in watchlist_agent.py.",
+    "companies": [
+      { "name": "PhonePe",       "linkedin_id": "10479149", "jobs_fetched": 20, "jobs_matched": 0, "likely_titles": ["Decision Scientist", "Analytics Engineer", "Product Analytics"] },
+      { "name": "Myntra",        "linkedin_id": "361348",   "jobs_fetched": 10, "jobs_matched": 0, "likely_titles": ["Data Analyst", "Category Intelligence", "Business Analytics"] },
+      { "name": "Delhivery",     "linkedin_id": "2312777",  "jobs_fetched": 3,  "jobs_matched": 0, "likely_titles": ["Operations Research", "Supply Chain Analytics"] },
+      { "name": "Intuit",        "linkedin_id": "1666",     "jobs_fetched": 25, "jobs_matched": 0, "likely_titles": ["Product Analyst", "Data Engineer", "BI Engineer"] },
+      { "name": "Apple",         "linkedin_id": "162479",   "jobs_fetched": 9,  "jobs_matched": 0, "likely_titles": ["Software Engineer", "Hardware Engineer", "Siri roles not present currently"] },
+      { "name": "Postman",       "linkedin_id": "3795851",  "jobs_fetched": 10, "jobs_matched": 0, "likely_titles": ["Software Engineer", "Product Engineer"] },
+      { "name": "InMobi",        "linkedin_id": "104812249","jobs_fetched": 4,  "jobs_matched": 0, "likely_titles": ["Ad Tech Engineer", "Platform Engineer"] },
+      { "name": "Atlassian",     "linkedin_id": "22688",    "jobs_fetched": 1,  "jobs_matched": 0, "likely_titles": ["Software Engineer"] },
+      { "name": "Lenskart",      "linkedin_id": "213339",   "jobs_fetched": 3,  "jobs_matched": 0, "likely_titles": ["Retail tech, non-ML roles currently"] },
+      { "name": "Sarvam AI",     "linkedin_id": "101315625","jobs_fetched": 3,  "jobs_matched": 0, "likely_titles": ["Researcher", "Language Engineer", "non-standard AI titles"] },
+      { "name": "Krutrim AI",    "linkedin_id": "99033385", "jobs_fetched": 1,  "jobs_matched": 0, "likely_titles": ["non-standard AI titles"] },
+      { "name": "Uniphore",      "linkedin_id": "1331150",  "jobs_fetched": 5,  "jobs_matched": 0, "likely_titles": ["Conversational AI Engineer", "Speech Engineer"] },
+      { "name": "Physics Wallah","linkedin_id": "78087354", "jobs_fetched": 1,  "jobs_matched": 0, "likely_titles": ["Product roles, non-ML currently"] },
+      { "name": "CleverTap",     "linkedin_id": "6611801",  "jobs_fetched": 2,  "jobs_matched": 0, "likely_titles": ["Product Engineer", "Analytics"] },
+      { "name": "MoEngage",      "linkedin_id": "4800048",  "jobs_fetched": 6,  "jobs_matched": 0, "likely_titles": ["Product Engineer", "Data Engineer"] }
+    ]
+  }
+}

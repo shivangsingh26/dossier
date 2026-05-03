@@ -71,7 +71,7 @@
     {
       "name": "Walmart Global Tech",
       "tier": "top_global_product",
-      "linkedin_slug": "walmart-global-tech",
+      "linkedin_slug": "walmartglobaltech",
       "careers_url": "https://careers.walmart.com/results/india",
       "scrape_method": "direct",
       "why": "Large Bengaluru GCC — supply chain ML, search/recommendation, Sam's Club AI"
@@ -90,6 +90,8 @@
       "linkedin_slug": "stripe",
       "careers_url": "https://stripe.com/jobs/search?location=india",
       "scrape_method": "direct",
+      "ats_type": "greenhouse",
+      "ats_token": "stripe",
       "why": "Fraud ML, payments intelligence — top pay, strong eng brand"
     },
     {
@@ -163,6 +165,8 @@
       "linkedin_slug": "databricks",
       "careers_url": "https://www.databricks.com/company/careers/open-positions?department=Engineering",
       "scrape_method": "direct",
+      "ats_type": "greenhouse",
+      "ats_token": "databricks",
       "why": "MLflow, Delta Lake, Mosaic AI — India office growing, strong ML infra work"
     },
     {
@@ -171,6 +175,8 @@
       "linkedin_slug": "airbnb",
       "careers_url": "https://careers.airbnb.com/positions/?location=India",
       "scrape_method": "direct",
+      "ats_type": "greenhouse",
+      "ats_token": "airbnb",
       "why": "Search ranking, pricing ML, trust & safety — small India team but selective"
     },
     {
@@ -195,6 +201,8 @@
       "linkedin_slug": "coinbase",
       "careers_url": "https://www.coinbase.com/en-in/careers/positions?department=Engineering",
       "scrape_method": "direct",
+      "ats_type": "greenhouse",
+      "ats_token": "coinbase",
       "why": "Fraud ML, blockchain analytics, risk — India office growing"
     },
     {
@@ -226,7 +234,7 @@
     {
       "name": "Zepto",
       "tier": "top_indian_product",
-      "linkedin_slug": "zepto-app",
+      "linkedin_slug": "zeptonow",
       "careers_url": "https://zepto.talentrecruit.com/career-page",
       "scrape_method": "direct",
       "why": "10-min delivery, demand forecasting, dark store optimization — fast-growing"
@@ -258,7 +266,7 @@
     {
       "name": "PhonePe",
       "tier": "top_indian_product",
-      "linkedin_slug": "phonepe-internet-pvt-ltd",
+      "linkedin_slug": "phonepe-internet",
       "careers_url": "https://www.phonepe.com/careers/",
       "scrape_method": "direct",
       "why": "UPI fraud detection, credit ML, insurance pricing — Walmart-backed, large team"
@@ -266,7 +274,7 @@
     {
       "name": "CRED",
       "tier": "top_indian_product",
-      "linkedin_slug": "cred-club",
+      "linkedin_slug": "cred",
       "careers_url": "https://careers.cred.club/",
       "scrape_method": "direct",
       "why": "Credit scoring, member behavior ML, fintech AI — high pay, selective hiring"
@@ -283,7 +291,7 @@
     {
       "name": "Groww",
       "tier": "top_indian_product",
-      "linkedin_slug": "growww",
+      "linkedin_slug": "groww",
       "careers_url": "https://groww.in/careers",
       "scrape_method": "direct",
       "why": "Investment recommendations, risk ML, customer behavior — fastest growing fintech"
@@ -291,7 +299,7 @@
     {
       "name": "Juspay",
       "tier": "top_indian_product",
-      "linkedin_slug": "juspay",
+      "linkedin_slug": "juspay-technologies",
       "careers_url": "https://juspay.io/careers",
       "scrape_method": "direct",
       "why": "Payment orchestration ML, fraud, conversion optimization — deep tech startup"
@@ -331,11 +339,171 @@
     {
       "name": "Ola",
       "tier": "top_indian_product",
-      "linkedin_slug": "ola-cabs",
+      "linkedin_slug": "ola-india",
       "careers_url": null,
       "scrape_method": "linkedin",
       "why": "Ride matching ML, ETA, surge pricing, Krutrim AI — large ML org",
       "note": "ola.com/careers returns 404 — use LinkedIn company page"
+    },
+    {
+      "name": "Zomato",
+      "tier": "top_indian_product",
+      "linkedin_slug": "zomato",
+      "careers_url": "https://www.zomato.com/careers",
+      "scrape_method": "direct",
+      "why": "Listed food-tech giant — demand forecasting, search/reco, fraud ML, large data org"
+    },
+    {
+      "name": "Myntra",
+      "tier": "top_indian_product",
+      "linkedin_slug": "myntra",
+      "careers_url": "https://careers.myntra.com/",
+      "scrape_method": "direct",
+      "why": "Flipkart-owned fashion platform — visual search, size recommendation, trend ML, strong DS team"
+    },
+    {
+      "name": "Disney+ Hotstar",
+      "tier": "top_global_product",
+      "linkedin_slug": "hotstar",
+      "careers_url": "https://careers.hotstar.com/",
+      "scrape_method": "direct",
+      "why": "Top OTT in India — content recommendations, cricket streaming analytics, 500M+ users"
+    },
+    {
+      "name": "MakeMyTrip",
+      "tier": "top_indian_product",
+      "linkedin_slug": "makemytrip",
+      "careers_url": "https://careers.makemytrip.com/",
+      "scrape_method": "direct",
+      "why": "India's largest travel platform (listed) — pricing ML, search ranking, demand forecasting"
+    },
+    {
+      "name": "Zoho",
+      "tier": "top_global_product",
+      "linkedin_slug": "zoho",
+      "careers_url": "https://careers.zohocorp.com/",
+      "scrape_method": "direct",
+      "why": "Global B2B SaaS (no VC, profitable) — Zia AI, NLP for CRM/support, 100M+ users"
+    },
+    {
+      "name": "Delhivery",
+      "tier": "top_indian_product",
+      "linkedin_slug": "delhivery",
+      "careers_url": "https://www.delhivery.com/careers",
+      "scrape_method": "direct",
+      "why": "Listed logistics tech — route optimization ML, demand forecasting, warehouse AI, large data platform"
+    },
+    {
+      "name": "upGrad",
+      "tier": "top_indian_product",
+      "linkedin_slug": "upgrad",
+      "careers_url": "https://www.upgrad.com/careers/",
+      "scrape_method": "direct",
+      "why": "EdTech unicorn — personalised learning ML, recommendation, NLP for assessments"
+    },
+    {
+      "name": "BharatPe",
+      "tier": "top_indian_product",
+      "linkedin_slug": "bharatpe",
+      "careers_url": "https://bharatpe.com/careers",
+      "scrape_method": "direct",
+      "why": "Fintech unicorn — merchant credit scoring, fraud detection, UPI analytics ML"
+    },
+    {
+      "name": "Tata 1mg",
+      "tier": "top_indian_product",
+      "linkedin_slug": "1mg",
+      "careers_url": "https://careers.1mg.com/",
+      "scrape_method": "direct",
+      "why": "Leading healthtech (Tata Group) — drug interaction ML, personalised health, symptom AI"
+    },
+    {
+      "name": "Physics Wallah",
+      "tier": "top_indian_product",
+      "linkedin_slug": "physicswallah",
+      "careers_url": "https://www.pw.live/careers",
+      "scrape_method": "direct",
+      "why": "Edtech unicorn (fastest to $1B) — adaptive learning AI, doubt-solving NLP, video recommendation"
+    },
+    {
+      "name": "Urban Company",
+      "tier": "top_indian_product",
+      "linkedin_slug": "urban-company",
+      "careers_url": "https://www.urbancompany.com/careers",
+      "scrape_method": "direct",
+      "why": "Home services marketplace — partner-job matching ML, pricing optimization, demand forecasting"
+    },
+    {
+      "name": "Rapido",
+      "tier": "top_indian_product",
+      "linkedin_slug": "rapido",
+      "careers_url": "https://rapido.bike/careers",
+      "scrape_method": "direct",
+      "why": "Bike taxi platform (50M+ users) — ETA prediction, surge pricing, driver matching ML"
+    },
+    {
+      "name": "Lenskart",
+      "tier": "top_indian_product",
+      "linkedin_slug": "lenskart-com",
+      "careers_url": "https://www.lenskart.com/careers",
+      "scrape_method": "direct",
+      "why": "Eyewear unicorn — virtual try-on CV, recommendation AI, supply chain ML"
+    },
+    {
+      "name": "Porter",
+      "tier": "top_indian_product",
+      "linkedin_slug": "porter",
+      "careers_url": "https://porter.in/careers",
+      "scrape_method": "direct",
+      "why": "B2B urban logistics (SoftBank-backed) — route optimization ML, demand prediction, dynamic pricing"
+    },
+    {
+      "name": "CleverTap",
+      "tier": "top_indian_product",
+      "linkedin_slug": "clevertap",
+      "careers_url": "https://clevertap.com/careers/",
+      "scrape_method": "direct",
+      "why": "Customer engagement SaaS — churn prediction ML, segmentation AI, campaign optimization"
+    },
+    {
+      "name": "MoEngage",
+      "tier": "top_indian_product",
+      "linkedin_slug": "moengage",
+      "careers_url": "https://www.moengage.com/careers/",
+      "scrape_method": "direct",
+      "why": "Customer analytics SaaS — predictive analytics, NLP for push notifications, AI send-time optimization"
+    },
+    {
+      "name": "ixigo",
+      "tier": "top_indian_product",
+      "linkedin_slug": "ixigo",
+      "careers_url": "https://www.ixigo.com/careers",
+      "scrape_method": "direct",
+      "why": "Travel platform (listed) — price prediction ML, train crowding forecast, NLP for customer queries"
+    },
+    {
+      "name": "OYO",
+      "tier": "top_indian_product",
+      "linkedin_slug": "oyo-rooms",
+      "careers_url": "https://www.oyorooms.com/careers/",
+      "scrape_method": "direct",
+      "why": "Hospitality tech (SoftBank-backed) — dynamic pricing ML, demand forecasting, revenue optimization"
+    },
+    {
+      "name": "Navi Technologies",
+      "tier": "top_indian_product",
+      "linkedin_slug": "navi",
+      "careers_url": "https://navi.com/careers/",
+      "scrape_method": "direct",
+      "why": "Sachin Bansal's fintech — credit scoring ML, fraud detection, insurance pricing AI"
+    },
+    {
+      "name": "MPL (Mobile Premier League)",
+      "tier": "top_indian_product",
+      "linkedin_slug": "mobile-premier-league",
+      "careers_url": "https://www.mpl.live/about-us/careers",
+      "scrape_method": "direct",
+      "why": "Gaming platform (Tiger Global-backed) — matchmaking ML, fraud detection, real-money game analytics"
     },
 
     {
@@ -349,7 +517,7 @@
     {
       "name": "Krutrim AI",
       "tier": "top_ai_startup",
-      "linkedin_slug": "krutrim-si-designs",
+      "linkedin_slug": "krutrim",
       "careers_url": null,
       "scrape_method": "linkedin",
       "why": "Ola's AI company — Indian LLM, multimodal AI",
@@ -366,7 +534,7 @@
     {
       "name": "Yellow.ai",
       "tier": "top_ai_startup",
-      "linkedin_slug": "yellowmessenger",
+      "linkedin_slug": "yellowai",
       "careers_url": null,
       "scrape_method": "linkedin",
       "why": "Enterprise conversational AI, LLM-powered chatbots — Bengaluru, $102M raised",
@@ -375,7 +543,7 @@
     {
       "name": "Observe.AI",
       "tier": "top_ai_startup",
-      "linkedin_slug": "observe-ai",
+      "linkedin_slug": "observe-inc",
       "careers_url": null,
       "scrape_method": "linkedin",
       "why": "Contact center AI, NLP/ASR for call analytics — $213M raised, Bengaluru HQ",
@@ -400,7 +568,7 @@
     {
       "name": "Darwinbox",
       "tier": "top_ai_startup",
-      "linkedin_slug": "darwinbox",
+      "linkedin_slug": "darwinbox-hrms",
       "careers_url": "https://darwinbox.com/careers",
       "scrape_method": "direct",
       "why": "HR tech with ML: attrition prediction, talent intelligence — Bengaluru unicorn"
@@ -408,7 +576,7 @@
     {
       "name": "Auric AI Labs",
       "tier": "top_ai_startup",
-      "linkedin_slug": "auric-ai-labs",
+      "linkedin_slug": "auric-ai",
       "careers_url": "https://www.auricai.in/",
       "scrape_method": "linkedin",
       "why": "AI-native startup, appeared in LinkedIn feed (AI Engineer: Agentic Systems)",
