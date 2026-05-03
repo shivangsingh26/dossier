@@ -197,12 +197,13 @@ def scrape_linkedin_jobs(
     experience_levels: list[str] | None = None,
     fetch_descriptions: bool = True,
     sleep_between_pages: float = 1.2,
+    company_id: str | None = None,
 ) -> list[dict]:
     """
     Scrape LinkedIn jobs using the public guest API.
 
     Args:
-        search_term:        e.g. "Machine Learning Engineer"
+        search_term:        e.g. "Machine Learning Engineer" — pass "" for company-only search
         location:           e.g. "Bengaluru, India"
         hours_old:          Only return jobs posted within last N hours (24, 72, or 168+)
         results_wanted:     Max number of jobs to return
@@ -211,6 +212,9 @@ def scrape_linkedin_jobs(
         fetch_descriptions: If True, make a second API call per job to get full description
                             (needed for scoring, but adds 1-2 seconds per job)
         sleep_between_pages: Seconds to wait between page fetches (rate limit protection)
+        company_id:         LinkedIn numeric company ID — when set, adds f_C= filter to
+                            fetch jobs from that specific company (used by watchlist agent
+                            to catch promoted listings that keyword search misses)
 
     Returns:
         List of job dicts with fields: site, title, company, location, job_url,
@@ -228,7 +232,8 @@ def scrape_linkedin_jobs(
     page      = 0
     max_pages = max(1, (results_wanted // 25) + 2)   # fetch a couple extra pages as buffer
 
-    logger.info(f"LinkedIn guest API: '{search_term}' in '{location}' | f_TPR={f_tpr} | f_E={f_e}")
+    log_label = f"f_C={company_id}" if company_id else f"'{search_term}'"
+    logger.info(f"LinkedIn guest API: {log_label} in '{location}' | f_TPR={f_tpr} | f_E={f_e}")
 
     while len(all_jobs) < results_wanted and page < max_pages:
         params: dict = {
@@ -239,6 +244,8 @@ def scrape_linkedin_jobs(
         }
         if f_e:
             params["f_E"] = f_e
+        if company_id:
+            params["f_C"] = company_id
 
         try:
             resp = requests.get(
