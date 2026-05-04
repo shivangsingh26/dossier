@@ -48,6 +48,11 @@ class Config:
         self.telegram_bot_token: str = os.getenv("TELEGRAM_BOT_TOKEN", "")
         self.telegram_chat_id: str = os.getenv("TELEGRAM_CHAT_ID", "")
 
+        # --- Company Intel (Step 3) ---
+        # Tavily: web search purpose-built for AI agents. Free tier: 1000 queries/month.
+        # Sign up at app.tavily.com — takes 30 seconds.
+        self.tavily_api_key: str = os.getenv("TAVILY_API_KEY", "")
+
         # --- Google: optional now, required when Step 3 tracker is built ---
         self.google_sheets_credentials: str = os.getenv("GOOGLE_SHEETS_CREDENTIALS_JSON", "")
         self.google_spreadsheet_id: str = os.getenv("GOOGLE_SPREADSHEET_ID", "")
