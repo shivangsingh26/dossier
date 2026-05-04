@@ -1,5 +1,5 @@
 """
-agents/watchlist_agent.py — Fetches jobs from the 50 target companies directly.
+agents/watchlist_agent.py — Fetches jobs from the target companies directly (currently 70).
 
 Unlike job_discovery.py which searches by KEYWORD (and misses promoted listings),
 this agent searches by COMPANY — fetching every ML/AI role our target companies
@@ -371,16 +371,16 @@ def load_target_companies() -> list[dict]:
 
 # ─── Main Entry Point ─────────────────────────────────────────────────────────
 
-def run(min_score: int = 5, location: str = "Bengaluru") -> list:
+def run(min_score: int = 5, location: str = "India") -> list:
     """
     Run the watchlist job discovery pipeline.
 
-    Fetches jobs from all 50 target companies using the best available free
+    Fetches jobs from all target companies using the best available free
     source per company, then scores through the same pipeline as job_discovery.py.
 
     Args:
         min_score: Minimum LLM score to include in results (default 5)
-        location:  Primary location for LinkedIn searches (default "Bengaluru")
+        location:  Primary location for LinkedIn searches (default "India")
 
     Returns:
         List of scored job dicts sorted by score descending.
@@ -402,10 +402,12 @@ def run(min_score: int = 5, location: str = "Bengaluru") -> list:
     console.print(f"  Candidate: {profile['identity']['name']} | Band: {exp_band['band']}")
 
     # ── Step 2: Fetch from all target companies ───────────────────────────────
-    console.print(f"\n[bold]Step 2/4[/bold] — Fetching from 50 target companies...")
-    console.print(f"  Greenhouse: 5 companies | Lever: 1 | LinkedIn f_C=: remaining")
+    companies         = load_target_companies()
+    n_companies       = len(companies)
+    greenhouse_count  = sum(1 for c in companies if c.get("ats_type") == "greenhouse")
+    console.print(f"\n[bold]Step 2/4[/bold] — Fetching from {n_companies} target companies...")
+    console.print(f"  Greenhouse: {greenhouse_count} | LinkedIn f_C=: remaining")
 
-    companies    = load_target_companies()
     id_cache     = _load_id_cache()
     all_raw_jobs: list[dict] = []
 

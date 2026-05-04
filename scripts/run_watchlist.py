@@ -34,8 +34,8 @@ def main() -> None:
     parser.add_argument(
         "--location",
         type=str,
-        default="Bengaluru",
-        help="Primary location for LinkedIn searches (default: Bengaluru)",
+        default="India",
+        help="Primary location for LinkedIn searches (default: India)",
     )
 
     args = parser.parse_args()
