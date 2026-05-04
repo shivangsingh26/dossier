@@ -38,6 +38,7 @@ from rich.console import Console
 from rich.table import Table
 
 from config import Config
+from core.intel_cache import get_cached_intel, save_intel_cache
 from core.llm_client import LLMClient
 from core.logger import get_logger
 
@@ -342,26 +343,43 @@ def run(jobs: list[dict], min_score: int = 7) -> list[dict]:
 
     n = len(company_to_jobs)
     console.print(f"  {len(high_score)} jobs (score ≥ {min_score}) across {n} companies")
-    console.print(f"  Tavily credits this run: ~{n * 2} of 1,000 free/month\n")
+    from core.intel_cache import is_intel_fresh
+    uncached = sum(1 for c in company_to_jobs if not is_intel_fresh(c))
+    console.print(f"  Tavily credits this run: ~{uncached * 2} of 1,000 free/month ({n - uncached} cached)\n")
 
     results: list[dict] = []
+
+    cache_hits = 0
 
     for idx, (company, jobs_list) in enumerate(company_to_jobs.items(), 1):
         console.print(f"  [{idx}/{n}] {company}...", end=" ")
 
-        raw   = gather_raw_intel(company, config)
-        intel = synthesize_intel(company, raw, llm)
+        cached = get_cached_intel(company)
+        if cached:
+            # Cache hit — skip Tavily entirely, reuse stored intel
+            console.print("[dim]cached (skipping Tavily)[/dim]")
+            intel      = cached
+            news_items = []  # news not re-fetched from cache; vault gets empty list
+            cache_hits += 1
+        else:
+            raw        = gather_raw_intel(company, config)
+            intel      = synthesize_intel(company, raw, llm)
+            news_items = raw.get("news_results", [])
+            save_intel_cache(company, intel)  # persist so next run skips Tavily
 
-        quality = intel.get("data_quality", "?")
-        stage   = intel.get("funding_stage") or "unknown"
-        console.print(f"[{_QUALITY_STYLE.get(quality, '')}]{quality}[/] | {stage}")
+            quality = intel.get("data_quality", "?")
+            stage   = intel.get("funding_stage") or "unknown"
+            console.print(f"[{_QUALITY_STYLE.get(quality, '')}]{quality}[/] | {stage}")
 
         for job in jobs_list:
-            save_intel_to_vault(job["job_id"], company, intel, raw.get("news_results", []))
+            save_intel_to_vault(job["job_id"], company, intel, news_items)
 
         results.append({"company": company, "jobs": jobs_list, "intel": intel})
 
-        if idx < n:
+        if idx < n and not cached:
             time.sleep(_SLEEP_BETWEEN)
+
+    if cache_hits:
+        console.print(f"\n  [dim]Cache hits: {cache_hits}/{n} companies (Tavily credits saved)[/dim]")
 
     return results
