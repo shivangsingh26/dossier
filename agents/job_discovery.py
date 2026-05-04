@@ -28,7 +28,8 @@ from rich.console import Console
 from rich.table import Table
 
 from config import Config
-from core.file_vault import job_vault_exists, save_jd, save_scorecard
+from core.db import get_seen_count, init_db, is_job_seen, mark_job_seen
+from core.file_vault import save_jd, save_scorecard
 from core.linkedin_scraper import scrape_linkedin_jobs
 from core.llm_client import LLMClient
 from core.logger import get_logger
@@ -410,6 +411,67 @@ def compute_urgency(date_posted) -> str:
         return "UNKNOWN"
 
 
+# ─── Experience & Degree Extractors ──────────────────────────────────────────
+# Rule-based regex extraction from raw JD text — no LLM needed.
+# Extracted values become stated facts in the LLM prompt so it doesn't re-infer
+# them from noisy prose, eliminating run-to-run scoring inconsistency.
+
+def extract_years_required(description: str) -> int | None:
+    """
+    Extract the minimum years of experience from JD text.
+    Returns the lower bound as an integer, or None if no requirement is found.
+    Handles common JD phrasings: "3+ years", "3-5 years", "3 to 5 years",
+    "minimum 3 years", "at least 3 years", "2 or more years",
+    "3 years of experience", "experience of 3+ years".
+    """
+    text = description.lower()
+    patterns = [
+        r'(\d+)\s*\+\s*years?',                           # "3+ years"
+        r'(\d+)\s*(?:-|–|to)\s*\d+\s*years?',             # "3-5 years", "3 to 5 years"
+        r'minimum\s+(?:of\s+)?(\d+)\s*years?',            # "minimum 3 years"
+        r'at\s+least\s+(\d+)\s*years?',                   # "at least 3 years"
+        r'(\d+)\s+or\s+more\s+years?',                    # "2 or more years"
+        r'(\d+)\s*years?\s+(?:of\s+)?experience',         # "3 years of experience"
+        r'experience\s+of\s+(\d+)\s*\+?\s*years?',        # "experience of 3+ years"
+        r'(\d+)\s*years?\s+minimum',                      # "3 years minimum"
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, text)
+        if match:
+            return int(match.group(1))
+    return None
+
+
+def extract_degree_required(description: str) -> str:
+    """
+    Extract degree requirement from JD text.
+    Returns "phd" | "masters" | "bachelors" | "none".
+    Most restrictive level wins: PhD checked first, then masters, then bachelors.
+    """
+    text = description.lower()
+
+    phd_patterns = [r'\bphd\b', r'\bph\.d\b', r'\bdoctorate\b', r'\bdoctoral\b']
+    for pattern in phd_patterns:
+        if re.search(pattern, text):
+            return "phd"
+
+    masters_patterns = [
+        r"\bmaster'?s?\b", r'\bm\.tech\b', r'\bmtech\b', r'\bmba\b', r'\bpostgraduate\b',
+    ]
+    for pattern in masters_patterns:
+        if re.search(pattern, text):
+            return "masters"
+
+    bachelors_patterns = [
+        r"\bbachelor'?s?\b", r'\bb\.?tech\b', r'\bundergraduate\b',
+    ]
+    for pattern in bachelors_patterns:
+        if re.search(pattern, text):
+            return "bachelors"
+
+    return "none"
+
+
 # ─── Job Fetching ─────────────────────────────────────────────────────────────
 
 def fetch_jobs_indeed(search_term: str, location: str, hours_old: int = 72) -> pd.DataFrame:
@@ -472,11 +534,13 @@ def score_job(
     job_function: str = "other",
     shared_llm: "LLMClient | None" = None,
     company_tier: str = "unknown",
+    years_required: int | None = None,
+    degree_required: str = "none",
 ) -> dict:
     """
     Score a single job against the candidate profile using gpt-5-nano.
-    job_function and company_tier are pre-extracted facts passed as ground truth
-    so the LLM doesn't have to infer them — eliminates run-to-run inconsistency.
+    job_function, company_tier, years_required, and degree_required are all
+    pre-extracted facts passed as ground truth so the LLM doesn't re-infer them.
     shared_llm: pass a single LLMClient instance when scoring in parallel to
     avoid creating one HTTP client per thread.
     Returns parsed score dict. Returns a safe default on failure.
@@ -500,6 +564,17 @@ def score_job(
     }
     tier_note = tier_labels.get(company_tier, tier_labels["unknown"])
 
+    years_note = "Not explicitly stated"
+    if years_required is not None:
+        years_note = f"{years_required}+ years required"
+
+    degree_map = {
+        "masters":   "Master's/MS/M.Tech required — moderate qualification mismatch (check candidate education above; deduct 0.5–1 pt on fit)",
+        "bachelors": "Bachelor's degree required — candidate meets minimum requirement",
+        "none":      "No specific degree requirement stated",
+    }
+    degree_note = degree_map.get(degree_required, "No specific degree requirement stated")
+
     user_prompt = f"""
 CANDIDATE PROFILE:
 {candidate_summary}
@@ -507,6 +582,8 @@ CANDIDATE PROFILE:
 PRE-EXTRACTED FACTS (treat these as ground truth — do not override):
 - Detected job function from title: {function_note}
 - Company tier from verified watchlist: {tier_note}
+- Years of experience required: {years_note}
+- Degree required: {degree_note}
 
 JOB TO SCORE:
 Company: {company}
@@ -592,19 +669,21 @@ def print_results(scored_jobs: list) -> None:
         return
 
     table = Table(title="Dossier — Job Discovery Results", show_lines=True)
-    table.add_column("#",        style="dim",   width=3)
-    table.add_column("Score",    style="bold",  width=6)
-    table.add_column("Urgency",                 width=8)
-    table.add_column("Company",                 width=20)
-    table.add_column("Role",                    width=30)
-    table.add_column("Source",                  width=9)
-    table.add_column("Reason",                  width=35)
-    table.add_column("Link",                    width=45, no_wrap=False)
+    table.add_column("#",          style="dim",   width=3)
+    table.add_column("Score",      style="bold",  width=6)
+    table.add_column("Urgency",                   width=7)
+    table.add_column("Company",                   width=18)
+    table.add_column("Role",                      width=26)
+    table.add_column("Src",                       width=7)
+    table.add_column("Reason",                    width=30)
+    table.add_column("Skills Gap",                width=22, no_wrap=False)
+    table.add_column("Link",                      width=38, no_wrap=False)
 
     for i, job in enumerate(scored_jobs, 1):
-        urgency   = job.get("urgency", "UNKNOWN")
-        relevancy = job.get("relevancy", "low")
-        url       = job.get("url") or ""
+        urgency    = job.get("urgency", "UNKNOWN")
+        relevancy  = job.get("relevancy", "low")
+        url        = job.get("url") or ""
+        skills_gap = ", ".join(job.get("preferred_skills_missing") or [])
         table.add_row(
             str(i),
             f"[{RELEVANCY_STYLE.get(relevancy, '')}]{job.get('score', 0)}/10[/]",
@@ -613,6 +692,7 @@ def print_results(scored_jobs: list) -> None:
             (job.get("title") or "")[:30],
             (job.get("site") or ""),
             (job.get("reason") or "")[:35],
+            skills_gap[:22],
             url,
         )
 
@@ -643,6 +723,7 @@ def run(hours_old: int = 72, min_score: int = 5) -> list:
     """
     config = Config()
     config.artifacts_dir.mkdir(parents=True, exist_ok=True)
+    init_db()
 
     # Step 1 — Load profile + compute experience band
     console.print("\n[bold]Step 1/4[/bold] — Loading profile...")
@@ -744,8 +825,7 @@ def run(hours_old: int = 72, min_score: int = 5) -> list:
         if len(description) < 100:
             continue
 
-        temp_id = generate_job_id(company, title, "unknown")
-        if job_vault_exists(temp_id):
+        if is_job_seen(url):
             skipped_seen += 1
             continue
 
@@ -770,12 +850,35 @@ def run(hours_old: int = 72, min_score: int = 5) -> list:
             })
             continue
 
+        years_required = extract_years_required(description)
+        if years_required is not None and years_required > exp_band["max_years_required"]:
+            skipped_low += 1
+            rejected_jobs.append({
+                "company": company, "title": title, "site": site, "url": url,
+                "score": 3, "relevancy": "low",
+                "reason": f"Experience too high: {years_required}+ yrs required (band: {exp_band['band']})",
+                "required_skills_missing": [], "description_preview": description[:300],
+            })
+            continue
+
+        degree_required = extract_degree_required(description)
+        if degree_required == "phd":
+            skipped_low += 1
+            rejected_jobs.append({
+                "company": company, "title": title, "site": site, "url": url,
+                "score": 3, "relevancy": "low",
+                "reason": "PhD required — candidate has bachelor's degree (pre-filter)",
+                "required_skills_missing": [], "description_preview": description[:300],
+            })
+            continue
+
         company_tier = classify_company_tier(company)
 
         jobs_for_llm.append({
             "company": company, "title": title, "site": site, "url": url,
             "description": description, "date_posted": date_posted,
             "job_function": job_function, "company_tier": company_tier,
+            "years_required": years_required, "degree_required": degree_required,
         })
 
     # ── Pass B: score surviving jobs in parallel using ThreadPoolExecutor ─────
@@ -794,7 +897,7 @@ def run(hours_old: int = 72, min_score: int = 5) -> list:
                 score_job,
                 j["company"], j["title"], j["description"],
                 candidate_summary, system_prompt, j["job_function"], llm_instance,
-                j["company_tier"],
+                j["company_tier"], j.get("years_required"), j.get("degree_required", "none"),
             ): j
             for j in jobs_for_llm
         }
@@ -809,6 +912,11 @@ def run(hours_old: int = 72, min_score: int = 5) -> list:
 
             if result["score"] < min_score:
                 skipped_low += 1
+                low_job_id = generate_job_id(job_data["company"], job_data["title"], result.get("relevancy", "low"))
+                mark_job_seen(
+                    job_data["url"], low_job_id, result["score"],
+                    result.get("relevancy", "low"), job_data["company"], job_data["title"], job_data["site"],
+                )
                 rejected_jobs.append({
                     "company":  job_data["company"],
                     "title":    job_data["title"],
@@ -839,12 +947,16 @@ def run(hours_old: int = 72, min_score: int = 5) -> list:
             }
             save_jd(job_id, job_data["description"])
             save_scorecard(job_id, full_record)
+            mark_job_seen(
+                job_data["url"], job_id, result["score"], relevancy,
+                job_data["company"], job_data["title"], job_data["site"],
+            )
             scored_jobs.append(full_record)
 
     # Step 4 — Sort and display
     console.print(" " * 80, end="\r")
     console.print(f"\n[bold]Step 4/4[/bold] — Results")
-    console.print(f"  Hard-no skipped: {skipped_hard} | Low score skipped: {skipped_low} | Already seen: {skipped_seen}")
+    console.print(f"  Hard-no skipped: {skipped_hard} | Low score: {skipped_low} | Already in DB: {skipped_seen} | DB total: {get_seen_count()}")
 
     scored_jobs.sort(key=lambda j: (j.get("score", 0)), reverse=True)
 

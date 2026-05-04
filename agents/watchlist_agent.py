@@ -44,6 +44,8 @@ from agents.job_discovery import (
     classify_job_function,
     compute_experience_band,
     compute_urgency,
+    extract_degree_required,
+    extract_years_required,
     generate_job_id,
     is_hard_no,
     is_seniority_mismatch,
@@ -52,7 +54,8 @@ from agents.job_discovery import (
     score_job,
 )
 from config import Config
-from core.file_vault import job_vault_exists, save_jd, save_scorecard
+from core.db import get_seen_count, init_db, is_job_seen, mark_job_seen
+from core.file_vault import save_jd, save_scorecard
 from core.linkedin_scraper import scrape_linkedin_jobs
 from core.llm_client import LLMClient
 from core.logger import get_logger
@@ -384,6 +387,7 @@ def run(min_score: int = 5, location: str = "Bengaluru") -> list:
     """
     config = Config()
     config.data_dir.mkdir(parents=True, exist_ok=True)
+    init_db()
 
     # ── Step 1: Load profile ──────────────────────────────────────────────────
     console.print("\n[bold]Step 1/4[/bold] — Loading profile...")
@@ -473,8 +477,7 @@ def run(min_score: int = 5, location: str = "Bengaluru") -> list:
             skipped += 1
             continue
 
-        temp_id = generate_job_id(company, title, "unknown")
-        if job_vault_exists(temp_id):
+        if is_job_seen(url):
             skipped += 1
             continue
 
@@ -497,6 +500,26 @@ def run(min_score: int = 5, location: str = "Bengaluru") -> list:
             })
             continue
 
+        years_required = extract_years_required(description)
+        if years_required is not None and years_required > exp_band["max_years_required"]:
+            skipped += 1
+            rejected_jobs.append({
+                "company": company, "title": title, "site": site, "url": url,
+                "score": 3, "reason": f"Experience too high: {years_required}+ yrs required (band: {exp_band['band']})",
+                "description_preview": description[:300],
+            })
+            continue
+
+        degree_required = extract_degree_required(description)
+        if degree_required == "phd":
+            skipped += 1
+            rejected_jobs.append({
+                "company": company, "title": title, "site": site, "url": url,
+                "score": 3, "reason": "PhD required — candidate has bachelor's degree (watchlist pre-filter)",
+                "description_preview": description[:300],
+            })
+            continue
+
         # All watchlist companies are known — tier will always be resolved correctly
         company_tier = classify_company_tier(company)
 
@@ -504,6 +527,8 @@ def run(min_score: int = 5, location: str = "Bengaluru") -> list:
             **job,
             "job_function": job_function,
             "company_tier": company_tier,
+            "years_required": years_required,
+            "degree_required": degree_required,
         })
 
     console.print(f"  Pre-filtered {skipped} | Sending [bold]{len(jobs_for_llm)}[/bold] to LLM (8 workers)...")
@@ -521,6 +546,7 @@ def run(min_score: int = 5, location: str = "Bengaluru") -> list:
                 j["company"], j["title"], j.get("description", ""),
                 candidate_summary, system_prompt,
                 j["job_function"], llm_instance, j["company_tier"],
+                j.get("years_required"), j.get("degree_required", "none"),
             ): j
             for j in jobs_for_llm
         }
@@ -533,12 +559,18 @@ def run(min_score: int = 5, location: str = "Bengaluru") -> list:
 
             result = future.result()
 
+            job_url = job_data.get("job_url", "")
             if result["score"] < min_score:
+                low_job_id = generate_job_id(job_data["company"], job_data["title"], result.get("relevancy", "low"))
+                mark_job_seen(
+                    job_url, low_job_id, result["score"],
+                    result.get("relevancy", "low"), job_data["company"], job_data["title"], job_data.get("site", ""),
+                )
                 rejected_jobs.append({
                     "company":              job_data["company"],
                     "title":               job_data["title"],
                     "site":                job_data.get("site", ""),
-                    "url":                 job_data.get("job_url", ""),
+                    "url":                 job_url,
                     "score":               result["score"],
                     "reason":              result.get("reason", ""),
                     "description_preview": job_data.get("description", "")[:300],
@@ -555,7 +587,7 @@ def run(min_score: int = 5, location: str = "Bengaluru") -> list:
                 "company":         job_data["company"],
                 "title":           job_data["title"],
                 "site":            job_data.get("site", ""),
-                "url":             job_data.get("job_url", ""),
+                "url":             job_url,
                 "urgency":         urgency,
                 "found_at":        datetime.now(timezone.utc).isoformat(),
                 "experience_band": exp_band["band"],
@@ -563,12 +595,16 @@ def run(min_score: int = 5, location: str = "Bengaluru") -> list:
             }
             save_jd(job_id, job_data.get("description", ""))
             save_scorecard(job_id, full_record)
+            mark_job_seen(
+                job_url, job_id, result["score"], relevancy,
+                job_data["company"], job_data["title"], job_data.get("site", ""),
+            )
             scored_jobs.append(full_record)
 
     # ── Step 4: Sort and display ──────────────────────────────────────────────
     console.print(" " * 80, end="\r")
     console.print(f"\n[bold]Step 4/4[/bold] — Results")
-    console.print(f"  Pre-filtered: {skipped} | Below score {min_score}: {len(rejected_jobs)}")
+    console.print(f"  Pre-filtered: {skipped} | Below score {min_score}: {len(rejected_jobs)} | DB total: {get_seen_count()}")
 
     scored_jobs.sort(key=lambda j: j.get("score", 0), reverse=True)
     diverse_jobs = apply_company_diversity(scored_jobs, max_per_company=3)
