@@ -44,6 +44,7 @@ _MODES = {
     "quick":         "Discovery + Watchlist (no company intel, zero Tavily cost)",
     "urgent":        "Discovery (forced 24h) + Watchlist (no company intel)",
     "company-intel": "Company Intel only — reads last-run files, no re-scraping",
+    "market-intel":  "Market Intel only — discover new AI/ML startups from funding news",
 }
 
 _DATA_DIR = Path("data")
@@ -100,13 +101,14 @@ def main() -> None:
     )
     parser.add_argument(
         "--mode",
-        choices=["full", "quick", "urgent", "company-intel"],
+        choices=["full", "quick", "urgent", "company-intel", "market-intel"],
         default="full",
         help=(
             "full          — Discovery + Watchlist + Company Intel  [default]\n"
             "quick         — Discovery + Watchlist (no company intel, fastest)\n"
             "urgent        — Discovery (forced 24h) + Watchlist (no company intel)\n"
             "company-intel — Company Intel only (reads yesterday's results)\n"
+            "market-intel  — Market Intel only (discover new AI/ML startups)\n"
         ),
     )
     parser.add_argument(
@@ -136,6 +138,7 @@ def main() -> None:
     if args.mode == "urgent":
         args.hours = 24
 
+    run_market_intel  = args.mode == "market-intel"
     run_discovery     = args.mode in ("full", "quick", "urgent")
     run_watchlist     = args.mode in ("full", "quick", "urgent")
     run_company_intel = args.mode in ("full", "company-intel")
@@ -151,6 +154,7 @@ def main() -> None:
         "min_score":               args.min_score,
         "company_intel_score":     args.company_intel_score,
         "stages_run":              [],
+        "market_intel_found":      0,
         "discovery_jobs":          0,
         "watchlist_jobs":          0,
         "company_intel_companies": 0,
@@ -160,6 +164,29 @@ def main() -> None:
 
     discovery_jobs: list[dict] = []
     watchlist_jobs: list[dict] = []
+
+    # ── Stage 0: Market Intel ─────────────────────────────────────────────────
+    if run_market_intel:
+        print_stage_banner(
+            "Stage 0 — Market Intel",
+            "discover new AI/ML startups from Indian funding news",
+        )
+        t0 = time.monotonic()
+        try:
+            from agents.market_intel_agent import run as _market_intel
+            discovered = _market_intel() or []
+            summary["stages_run"].append("market_intel")
+            watchlist_adds = sum(1 for c in discovered if c.get("pipeline_stage") == "watchlist")
+            cold_outreach  = sum(1 for c in discovered if c.get("pipeline_stage") == "cold_outreach")
+            summary["market_intel_found"] = len(discovered)
+            console.print(
+                f"\n  [green]✓ Market Intel complete[/green] — "
+                f"{watchlist_adds} → watchlist · {cold_outreach} → cold outreach · "
+                f"{time.monotonic() - t0:.0f}s"
+            )
+        except Exception as exc:
+            console.print(f"\n  [red]✗ Market Intel failed:[/red] {exc}")
+            summary["stage_errors"].append(f"market_intel: {exc}")
 
     # ── Stage 1: Job Discovery ────────────────────────────────────────────────
     if run_discovery:
@@ -254,6 +281,8 @@ def main() -> None:
 
     console.print()
     console.print(Rule("[bold]Pipeline Complete[/bold]", style="bold"))
+    if summary["market_intel_found"] or run_market_intel:
+        console.print(f"  Market Intel:    {summary['market_intel_found']} new companies discovered")
     console.print(f"  Discovery:       {summary['discovery_jobs']} jobs")
     console.print(f"  Watchlist:       {summary['watchlist_jobs']} jobs")
     console.print(f"  Company Intel:   {summary['company_intel_companies']} companies researched")
