@@ -71,10 +71,10 @@ console = Console()
 
 _ML_TITLE_KEYWORDS = [
     # Core ML/AI titles
-    "machine learning", " ml ", "ai engineer", "artificial intelligence",
+    "machine learning", " ml ", "ai/ml", "ai engineer", "artificial intelligence",
     "data scientist", "data science", "applied scientist",
     "nlp", "natural language", "computer vision",
-    "llm", "large language", "generative", "gen ai",
+    "llm", "large language", "generative", "gen ai", "genai",
     "deep learning", "reinforcement learning",
     "mlops", "ml platform", "research engineer", "research scientist",
     "recommendation", "ranking engineer", "speech recognition",
@@ -337,18 +337,18 @@ def fetch_jobs_linkedin_company(
     Fetch LinkedIn jobs for a specific company using the f_C= company ID filter.
     Empty search_term means "all jobs at this company" — we filter by ML/AI title
     afterwards. This catches promoted/sponsored listings that keyword search misses.
-    Rate: 25 results, 1 page, 0.5s between description fetches.
+    Rate: 50 results, 2 pages, jittered sleep between pages.
     """
     try:
         jobs = scrape_linkedin_jobs(
             search_term="",
             location=location,
             hours_old=720,          # 30 days — LinkedIn snaps to r2592000 anyway
-            results_wanted=25,      # top 25 most recent per company
+            results_wanted=50,      # 2 pages per company — catches more recent postings
             experience_levels=[],   # no f_E filter — MAANG roles are "Mid-Senior" on LinkedIn
                                     # is_seniority_mismatch() in pre-filter handles this downstream
             fetch_descriptions=True,
-            sleep_between_pages=0.5,
+            sleep_between_pages=0.8,
             company_id=company_id,
         )
         ml_jobs = [j for j in jobs if is_ml_relevant_title(j.get("title", ""))]
@@ -461,7 +461,17 @@ def run(min_score: int = 5, location: str = "India") -> list:
 
     jobs_for_llm: list[dict] = []
     rejected_jobs: list[dict] = []
-    skipped = 0
+
+    # Per-reason counters so the summary line explains exactly why jobs were dropped
+    skip_counts: dict[str, int] = {
+        "hard_no":        0,
+        "short_desc":     0,
+        "already_seen":   0,
+        "seniority":      0,
+        "support_ops":    0,
+        "exp_too_high":   0,
+        "phd_required":   0,
+    }
 
     for job in deduped:
         company     = job["company"]
@@ -472,19 +482,19 @@ def run(min_score: int = 5, location: str = "India") -> list:
 
         # Same pre-filters as job_discovery.py — ensures consistent behaviour
         if is_hard_no(company, hard_nos):
-            skipped += 1
+            skip_counts["hard_no"] += 1
             continue
 
         if len(description) < 100:
-            skipped += 1
+            skip_counts["short_desc"] += 1
             continue
 
         if is_job_seen(url):
-            skipped += 1
+            skip_counts["already_seen"] += 1
             continue
 
         if is_seniority_mismatch(title, exp_band):
-            skipped += 1
+            skip_counts["seniority"] += 1
             rejected_jobs.append({
                 "company": company, "title": title, "site": site, "url": url,
                 "score": 3, "reason": "Seniority hard cap (watchlist pre-filter)",
@@ -494,7 +504,7 @@ def run(min_score: int = 5, location: str = "India") -> list:
 
         job_function = classify_job_function(title)
         if job_function == "support_ops":
-            skipped += 1
+            skip_counts["support_ops"] += 1
             rejected_jobs.append({
                 "company": company, "title": title, "site": site, "url": url,
                 "score": 3, "reason": "Support/ops role (watchlist pre-filter)",
@@ -504,7 +514,7 @@ def run(min_score: int = 5, location: str = "India") -> list:
 
         years_required = extract_years_required(description)
         if years_required is not None and years_required > exp_band["max_years_required"]:
-            skipped += 1
+            skip_counts["exp_too_high"] += 1
             rejected_jobs.append({
                 "company": company, "title": title, "site": site, "url": url,
                 "score": 3, "reason": f"Experience too high: {years_required}+ yrs required (band: {exp_band['band']})",
@@ -514,7 +524,7 @@ def run(min_score: int = 5, location: str = "India") -> list:
 
         degree_required = extract_degree_required(description)
         if degree_required == "phd":
-            skipped += 1
+            skip_counts["phd_required"] += 1
             rejected_jobs.append({
                 "company": company, "title": title, "site": site, "url": url,
                 "score": 3, "reason": "PhD required — candidate has bachelor's degree (watchlist pre-filter)",
@@ -533,7 +543,13 @@ def run(min_score: int = 5, location: str = "India") -> list:
             "degree_required": degree_required,
         })
 
-    console.print(f"  Pre-filtered {skipped} | Sending [bold]{len(jobs_for_llm)}[/bold] to LLM (8 workers)...")
+    total_skipped = sum(skip_counts.values())
+    skip_summary = " | ".join(
+        f"{label.replace('_', ' ')}: {count}"
+        for label, count in skip_counts.items()
+        if count > 0
+    )
+    console.print(f"  Pre-filtered {total_skipped} ({skip_summary}) | Sending [bold]{len(jobs_for_llm)}[/bold] to LLM (8 workers)...")
 
     # WHY THREADPOOLEXECUTOR: same reason as job_discovery — each LLM call waits
     # 1-2s for network. 8 parallel workers give near-linear speedup at no code cost.
@@ -606,7 +622,7 @@ def run(min_score: int = 5, location: str = "India") -> list:
     # ── Step 4: Sort and display ──────────────────────────────────────────────
     console.print(" " * 80, end="\r")
     console.print(f"\n[bold]Step 4/4[/bold] — Results")
-    console.print(f"  Pre-filtered: {skipped} | Below score {min_score}: {len(rejected_jobs)} | DB total: {get_seen_count()}")
+    console.print(f"  Pre-filtered: {total_skipped} | Below score {min_score}: {len(rejected_jobs)} | DB total: {get_seen_count()}")
 
     scored_jobs.sort(key=lambda j: j.get("score", 0), reverse=True)
     diverse_jobs = apply_company_diversity(scored_jobs, max_per_company=3)

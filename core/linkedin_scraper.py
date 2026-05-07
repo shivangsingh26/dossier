@@ -20,15 +20,20 @@ KEY PARAMETERS:
   f_E        — experience filter: 2=Entry level, 3=Associate, 4=Mid-Senior
   start      — pagination offset (0, 25, 50 ...)
 
-RATE LIMITING:
-  Sleep 1 second between page fetches. For personal job search volume (< 100 jobs/day)
-  this is well within LinkedIn's tolerance. Do NOT run this in tight loops.
+RATE LIMITING STRATEGY:
+  - requests.Session() reuses TCP connections and persists cookies (looks more like a browser)
+  - Jitter on all sleeps: no robot-perfect intervals
+  - 429 retry with exponential backoff: waits 30s → 60s → 120s before giving up
+  - Parallel description fetching (5 workers): ~4x speedup, safe because each
+    request hits a different URL and workers start with random jitter delays
 
-Phase A: Synchronous, no proxies, plain requests.
+Phase B: Session-based, parallel description fetching, retry on 429.
 """
 
+import random
 import re
 import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone, timedelta
 
 import requests
@@ -40,6 +45,9 @@ logger = get_logger(__name__)
 
 GUEST_SEARCH_URL = "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search"
 GUEST_DETAIL_URL = "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/{job_id}"
+
+# Seconds to wait between 429 retries — exponential: 30s, 60s, 120s
+_BACKOFF_SCHEDULE = [30, 60, 120]
 
 # Rotate through a few real browser user agents to avoid trivial blocking
 USER_AGENTS = [
@@ -155,7 +163,7 @@ def _parse_job_cards(html: str) -> list[dict]:
                 "job_url":     job_url,
                 "linkedin_id": job_id,
                 "date_posted": date_posted,
-                "description": "",   # Filled in by fetch_description()
+                "description": "",   # Filled in by _fetch_descriptions_parallel()
             })
 
         except Exception as e:
@@ -165,28 +173,75 @@ def _parse_job_cards(html: str) -> list[dict]:
     return jobs
 
 
-def _fetch_description(job_id: str, agent_index: int = 0) -> str:
+def _fetch_description(job_id: str, session: requests.Session, agent_index: int = 0) -> str:
     """
     Fetch the full job description for a single LinkedIn job ID.
-    Returns empty string on failure.
+    Retries once on 429 after a short backoff. Returns empty string on failure.
     """
     if not job_id:
         return ""
-    try:
-        url = GUEST_DETAIL_URL.format(job_id=job_id)
-        resp = requests.get(url, headers=_get_headers(agent_index), timeout=10)
-        if resp.status_code != 200:
+
+    url = GUEST_DETAIL_URL.format(job_id=job_id)
+
+    for attempt in range(2):  # one retry on 429
+        try:
+            resp = session.get(url, headers=_get_headers(agent_index), timeout=10)
+
+            if resp.status_code == 429:
+                if attempt == 0:
+                    wait = random.uniform(15, 30)
+                    logger.debug(f"Description fetch rate limited. Waiting {wait:.0f}s...")
+                    time.sleep(wait)
+                    continue
+                return ""
+
+            if resp.status_code != 200:
+                return ""
+
+            soup = BeautifulSoup(resp.text, "html.parser")
+            desc_el = soup.find("div", class_=lambda c: c and "description" in (c or "").lower())
+            if not desc_el:
+                desc_el = soup.find("section", class_=lambda c: c and "description" in (c or "").lower())
+            return desc_el.get_text(separator="\n", strip=True) if desc_el else ""
+
+        except requests.Timeout:
+            logger.debug(f"Description fetch timed out for job {job_id}")
+            return ""
+        except requests.RequestException as e:
+            logger.debug(f"Description fetch failed for job {job_id}: {e}")
             return ""
 
-        soup = BeautifulSoup(resp.text, "html.parser")
-        desc_el = soup.find("div", class_=lambda c: c and "description" in (c or "").lower())
-        if not desc_el:
-            desc_el = soup.find("section", class_=lambda c: c and "description" in (c or "").lower())
-        return desc_el.get_text(separator="\n", strip=True) if desc_el else ""
+    return ""
 
-    except Exception as e:
-        logger.debug(f"Failed to fetch description for LinkedIn job {job_id}: {e}")
-        return ""
+
+def _fetch_descriptions_parallel(
+    jobs: list[dict],
+    session: requests.Session,
+    max_workers: int = 5,
+) -> None:
+    """
+    Fetch descriptions for all jobs in parallel. Mutates jobs list in-place.
+
+    WHY THREADPOOLEXECUTOR: description fetches are pure network I/O — each one
+    waits 0.5-2s for LinkedIn to respond. Fetching 5 at a time (different URLs,
+    different job pages) gives ~4x speedup with no extra detection risk. Workers
+    start with a random jitter so requests don't all fire at the same millisecond.
+    """
+    def fetch_one(args: tuple) -> tuple[int, str]:
+        index, job = args
+        # Stagger by slot: spread requests 0.4s apart so the 3 workers don't all
+        # fire within the same second (LinkedIn soft-throttles concurrent bursts).
+        time.sleep((index % max_workers) * 0.4 + random.uniform(0.0, 0.2))
+        desc = _fetch_description(job.get("linkedin_id", ""), session, agent_index=index)
+        return index, desc
+
+    logger.info(f"Fetching descriptions for {len(jobs)} LinkedIn jobs...")
+
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        results = list(executor.map(fetch_one, enumerate(jobs)))
+
+    for index, desc in results:
+        jobs[index]["description"] = desc
 
 
 def scrape_linkedin_jobs(
@@ -197,6 +252,7 @@ def scrape_linkedin_jobs(
     experience_levels: list[str] | None = None,
     fetch_descriptions: bool = True,
     sleep_between_pages: float = 1.2,
+    desc_workers: int = 3,
     company_id: str | None = None,
 ) -> list[dict]:
     """
@@ -209,9 +265,8 @@ def scrape_linkedin_jobs(
         results_wanted:     Max number of jobs to return
         experience_levels:  List of levels to filter — ["entry", "associate"] by default
                             entry=0-2yr, associate=2-5yr, mid_senior=5yr+
-        fetch_descriptions: If True, make a second API call per job to get full description
-                            (needed for scoring, but adds 1-2 seconds per job)
-        sleep_between_pages: Seconds to wait between page fetches (rate limit protection)
+        fetch_descriptions: If True, fetch full descriptions in parallel (needed for scoring)
+        sleep_between_pages: Base seconds between page fetches — actual sleep adds ±30% jitter
         company_id:         LinkedIn numeric company ID — when set, adds f_C= filter to
                             fetch jobs from that specific company (used by watchlist agent
                             to catch promoted listings that keyword search misses)
@@ -227,6 +282,10 @@ def scrape_linkedin_jobs(
     f_e     = ",".join(EXPERIENCE_LEVELS[lvl] for lvl in experience_levels if lvl in EXPERIENCE_LEVELS)
     cutoff  = datetime.now(timezone.utc) - timedelta(hours=hours_old)
 
+    # Session reuse: TCP connection reuse + cookie persistence across requests.
+    # This looks more like a real browser and is faster than creating a new
+    # connection per request.
+    session   = requests.Session()
     all_jobs: list[dict] = []
     start     = 0
     page      = 0
@@ -247,66 +306,80 @@ def scrape_linkedin_jobs(
         if company_id:
             params["f_C"] = company_id
 
-        try:
-            resp = requests.get(
-                GUEST_SEARCH_URL,
-                params=params,
-                headers=_get_headers(page),
-                timeout=15,
-            )
+        page_jobs = None
 
-            if resp.status_code == 429:
-                logger.warning("LinkedIn guest API: rate limited (429). Stopping early.")
+        # Retry loop with exponential backoff on 429
+        for attempt, backoff in enumerate([0] + _BACKOFF_SCHEDULE):
+            if backoff:
+                logger.warning(f"LinkedIn rate limited (429). Waiting {backoff}s before retry {attempt}/{len(_BACKOFF_SCHEDULE)}...")
+                time.sleep(backoff)
+
+            try:
+                resp = session.get(
+                    GUEST_SEARCH_URL,
+                    params=params,
+                    headers=_get_headers(page),
+                    timeout=15,
+                )
+
+                if resp.status_code == 429:
+                    continue  # trigger next backoff iteration
+
+                if resp.status_code != 200:
+                    logger.warning(f"LinkedIn guest API returned {resp.status_code} on page {page}")
+                    page_jobs = []
+                    break
+
+                page_jobs = _parse_job_cards(resp.text)
+                break  # success — exit retry loop
+
+            except requests.Timeout:
+                logger.warning(f"LinkedIn guest API timed out on page {page}")
+                page_jobs = []
                 break
-            if resp.status_code != 200:
-                logger.warning(f"LinkedIn guest API returned {resp.status_code} on page {page}")
+            except requests.RequestException as e:
+                logger.error(f"LinkedIn guest API request failed: {e}")
+                page_jobs = []
                 break
+        else:
+            # Exhausted all retries on 429
+            logger.warning(f"LinkedIn guest API: gave up after {len(_BACKOFF_SCHEDULE)} retries on page {page}")
+            break
 
-            page_jobs = _parse_job_cards(resp.text)
+        if page_jobs is None or not page_jobs:
+            logger.debug(f"LinkedIn: no jobs on page {page}, stopping")
+            break
 
-            if not page_jobs:
-                logger.debug(f"LinkedIn: no jobs on page {page}, stopping")
-                break
-
-            # Filter by actual date (f_TPR is best-effort on LinkedIn's side)
-            # Normalize naive datetimes to UTC before comparing with timezone-aware cutoff
-            filtered = []
-            for job in page_jobs:
-                posted = job.get("date_posted")
-                if posted is None:
+        # Filter by actual date (f_TPR is best-effort on LinkedIn's side)
+        # Normalize naive datetimes to UTC before comparing with timezone-aware cutoff
+        filtered = []
+        for job in page_jobs:
+            posted = job.get("date_posted")
+            if posted is None:
+                filtered.append(job)
+            else:
+                if posted.tzinfo is None:
+                    posted = posted.replace(tzinfo=timezone.utc)
+                if posted >= cutoff:
                     filtered.append(job)
-                else:
-                    if posted.tzinfo is None:
-                        posted = posted.replace(tzinfo=timezone.utc)
-                    if posted >= cutoff:
-                        filtered.append(job)
 
-            all_jobs.extend(filtered)
-            logger.debug(f"LinkedIn page {page}: {len(page_jobs)} raw, {len(filtered)} after date filter")
-
-        except requests.Timeout:
-            logger.warning(f"LinkedIn guest API timed out on page {page}")
-            break
-        except requests.RequestException as e:
-            logger.error(f"LinkedIn guest API request failed: {e}")
-            break
+        all_jobs.extend(filtered)
+        logger.debug(f"LinkedIn page {page}: {len(page_jobs)} raw, {len(filtered)} after date filter")
 
         start += 25
         page  += 1
 
-        # Polite delay between page fetches
+        # Jitter on inter-page sleep: ±40% of the base value so requests
+        # don't arrive at perfectly regular intervals (a bot detection signal)
         if page < max_pages and len(all_jobs) < results_wanted:
-            time.sleep(sleep_between_pages)
+            jitter = sleep_between_pages * random.uniform(0.6, 1.4)
+            time.sleep(jitter)
 
     all_jobs = all_jobs[:results_wanted]
 
-    # Fetch descriptions (second API call per job — needed for LLM scoring)
+    # Parallel description fetching — ~4x faster than sequential
     if fetch_descriptions and all_jobs:
-        logger.info(f"Fetching descriptions for {len(all_jobs)} LinkedIn jobs...")
-        for i, job in enumerate(all_jobs):
-            if job.get("linkedin_id"):
-                job["description"] = _fetch_description(job["linkedin_id"], agent_index=i)
-                time.sleep(0.5)  # brief pause between description fetches
+        _fetch_descriptions_parallel(all_jobs, session, max_workers=desc_workers)
 
     logger.info(f"LinkedIn guest API: returned {len(all_jobs)} jobs for '{search_term}'")
     return all_jobs
