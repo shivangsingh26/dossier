@@ -26,9 +26,27 @@ WHY _openai AND _anthropic (WITH UNDERSCORE):
    self.openai would shadow that module name inside the class.
 2. Single underscore = Python convention for "internal detail, don't access directly".
    Use LLMClient().call(...), not LLMClient()._openai.chat.completions.create(...)
+
+THREAD SAFETY:
+The singleton uses double-checked locking (threading.Lock) so two ThreadPoolExecutor
+workers initialising simultaneously can't both call _init_clients(). After init, the
+OpenAI and Anthropic SDK clients are stateless per request — safe to share across threads.
+
+RETRY POLICY (SDK-native):
+Both SDKs have built-in retry with exponential backoff via the max_retries parameter.
+max_retries=3 means: 1 original attempt + up to 3 retries on 429 (rate limit) and
+5xx errors. Auth errors (401) are never retried — they are permanent failures.
+We do not write manual retry loops: the SDK's implementation is correct and battle-tested.
+
+COST TRACKING:
+Both SDKs return token usage natively in every response (response.usage). We read these
+and accumulate per-model counters in self._usage. Call get_usage_summary() at the end of
+a pipeline run to log total cost in last_orchestrator_run.json.
+Pricing table matches CLAUDE.md (verified May 2026).
 """
 
 import base64
+import threading
 from pathlib import Path
 
 import openai
@@ -39,27 +57,94 @@ from core.logger import get_logger
 
 logger = get_logger(__name__)
 
+# Cost per million tokens — verified May 2026 (matches CLAUDE.md pricing table)
+_COST_PER_M: dict[str, dict[str, float]] = {
+    "gpt-5.4-mini":              {"input": 0.75,  "output": 4.50},
+    "gpt-5":                     {"input": 1.25,  "output": 10.00},
+    "claude-haiku-4-5-20251001": {"input": 1.00,  "output": 5.00},
+    "claude-sonnet-4-6":         {"input": 3.00,  "output": 15.00},
+}
+
 
 class LLMClient:
-    _instance = None  # Singleton — one set of clients shared across all agents
+    _instance = None
+    _lock = threading.Lock()  # guards singleton initialisation under concurrent threads
 
     def __new__(cls):
+        # Double-checked locking: cheap path (no lock) after first init.
+        # Without this, two ThreadPoolExecutor workers could both see _instance is None
+        # before either sets it, causing _init_clients() to run twice simultaneously.
         if cls._instance is None:
-            cls._instance = super().__new__(cls)
-            cls._instance._init_clients()
+            with cls._lock:
+                if cls._instance is None:
+                    cls._instance = super().__new__(cls)
+                    cls._instance._init_clients()
         return cls._instance
 
     def _init_clients(self) -> None:
-        """Initialise both OpenAI and Anthropic clients from config."""
+        """Initialise both SDK clients with built-in retry. Called exactly once."""
         config = Config()
 
-        # OpenAI client — used for gpt-* and o* models
-        self._openai = openai.OpenAI(api_key=config.openai_api_key)
+        # max_retries=3: the SDK retries automatically on 429 (rate limit) and 5xx errors
+        # with exponential backoff. This is the official SDK pattern — no manual loops needed.
+        self._openai = openai.OpenAI(
+            api_key=config.openai_api_key,
+            max_retries=3,
+        )
+        self._anthropic = anthropic.Anthropic(
+            api_key=config.anthropic_api_key,
+            max_retries=3,
+        )
 
-        # Anthropic client — used for claude-* models only
-        self._anthropic = anthropic.Anthropic(api_key=config.anthropic_api_key)
+        # Per-model usage counters — populated from response.usage after every call.
+        # Keyed by model name → {prompt_tokens, completion_tokens, calls}
+        self._usage: dict[str, dict[str, int]] = {}
 
-        logger.info("LLM clients initialised (OpenAI + Anthropic)")
+        logger.info("LLM clients initialised (OpenAI + Anthropic, max_retries=3)")
+
+    def _track_usage(self, model: str, prompt_tokens: int, completion_tokens: int) -> None:
+        """Accumulate token counts from response.usage into per-model counters."""
+        if model not in self._usage:
+            self._usage[model] = {"prompt_tokens": 0, "completion_tokens": 0, "calls": 0}
+        self._usage[model]["prompt_tokens"] += prompt_tokens
+        self._usage[model]["completion_tokens"] += completion_tokens
+        self._usage[model]["calls"] += 1
+
+    def get_usage_summary(self) -> dict:
+        """
+        Return accumulated token usage and estimated cost across all calls this run.
+        Reads from response.usage counters collected during _call_openai / _call_anthropic.
+        Call this at the end of a pipeline stage to include in last_orchestrator_run.json.
+        """
+        total_prompt = sum(v["prompt_tokens"] for v in self._usage.values())
+        total_completion = sum(v["completion_tokens"] for v in self._usage.values())
+        total_calls = sum(v["calls"] for v in self._usage.values())
+
+        total_cost = 0.0
+        per_model: dict = {}
+        for model, counts in self._usage.items():
+            # Fall back to gpt-5.4-mini rates for any unlisted model — conservative estimate
+            rates = _COST_PER_M.get(model, {"input": 0.75, "output": 4.50})
+            cost = (
+                (counts["prompt_tokens"] / 1_000_000) * rates["input"]
+                + (counts["completion_tokens"] / 1_000_000) * rates["output"]
+            )
+            total_cost += cost
+            per_model[model] = {
+                "calls": counts["calls"],
+                "prompt_tokens": counts["prompt_tokens"],
+                "completion_tokens": counts["completion_tokens"],
+                "cost_usd": round(cost, 5),
+            }
+
+        return {
+            "total_calls": total_calls,
+            "total_prompt_tokens": total_prompt,
+            "total_completion_tokens": total_completion,
+            "total_tokens": total_prompt + total_completion,
+            "estimated_cost_usd": round(total_cost, 5),
+            "per_model": per_model,
+        }
 
     def call(
         self,
@@ -82,7 +167,7 @@ class LLMClient:
 
         Raises:
             ValueError: If the model name is not recognised as OpenAI or Anthropic
-            openai.APIError / anthropic.APIError: Propagated on API failure
+            openai.APIError / anthropic.APIError: Propagated on API failure after SDK retries
         """
         logger.debug(f"LLM call | model={model} | system={system_prompt[:60]}...")
 
@@ -106,24 +191,37 @@ class LLMClient:
         model: str,
         max_tokens: int,
     ) -> str:
-        """Call the OpenAI chat completions API. Returns response text."""
+        """Call the OpenAI chat completions API. Returns response text.
+
+        Retries are handled by the SDK (max_retries=3, set at client init).
+        Token usage is read from response.usage — the official SDK response field.
+        """
         try:
             response = self._openai.chat.completions.create(
                 model=model,
-                max_completion_tokens=max_tokens,  # GPT-5 family uses max_completion_tokens, not max_tokens
+                max_completion_tokens=max_tokens,  # GPT-5 family uses max_completion_tokens
                 messages=[
                     # "developer" is the v2.x SDK recommended role for system-level instructions
                     {"role": "developer", "content": system_prompt},
                     {"role": "user", "content": user_prompt},
                 ],
             )
-            return response.choices[0].message.content
+            # response.usage is the official SDK field — always present in non-streaming calls
+            usage = response.usage
+            if usage:
+                self._track_usage(model, usage.prompt_tokens, usage.completion_tokens)
+                logger.debug(
+                    f"Tokens | {usage.prompt_tokens}p + {usage.completion_tokens}c "
+                    f"= {usage.total_tokens}t | model={model}"
+                )
+            return response.choices[0].message.content or ""
 
         except openai.AuthenticationError as e:
             logger.error(f"OpenAI authentication failed — check OPENAI_API_KEY in .env: {e}")
             raise
         except openai.RateLimitError as e:
-            logger.warning(f"OpenAI rate limit hit — slow down or upgrade plan: {e}")
+            # Raised only after all SDK retries exhausted
+            logger.error(f"OpenAI rate limit — all retries exhausted: {e}")
             raise
         except openai.APIConnectionError as e:
             logger.error(f"OpenAI connection failed — check internet / API status: {e}")
@@ -185,6 +283,11 @@ class LLMClient:
                     }
                 ],
             )
+            # Track vision call usage
+            usage = response.usage
+            if usage:
+                self._track_usage(model, usage.input_tokens, usage.output_tokens)
+
             return response.content[0].text
 
         except anthropic.AuthenticationError as e:
@@ -201,7 +304,12 @@ class LLMClient:
         model: str,
         max_tokens: int,
     ) -> str:
-        """Call the Anthropic Messages API. Returns response text."""
+        """Call the Anthropic Messages API. Returns response text.
+
+        Retries are handled by the SDK (max_retries=3, set at client init).
+        Token usage is read from response.usage — the official SDK response field.
+        Note: Anthropic uses input_tokens/output_tokens (not prompt/completion).
+        """
         try:
             response = self._anthropic.messages.create(
                 model=model,
@@ -211,13 +319,22 @@ class LLMClient:
                     {"role": "user", "content": user_prompt},
                 ],
             )
+            # Anthropic SDK: response.usage.input_tokens / output_tokens
+            usage = response.usage
+            if usage:
+                self._track_usage(model, usage.input_tokens, usage.output_tokens)
+                logger.debug(
+                    f"Tokens | {usage.input_tokens}p + {usage.output_tokens}c "
+                    f"= {usage.input_tokens + usage.output_tokens}t | model={model}"
+                )
             return response.content[0].text
 
         except anthropic.AuthenticationError as e:
             logger.error(f"Anthropic authentication failed — check ANTHROPIC_API_KEY in .env: {e}")
             raise
         except anthropic.RateLimitError as e:
-            logger.warning(f"Anthropic rate limit hit — slow down or upgrade plan: {e}")
+            # Raised only after all SDK retries exhausted
+            logger.error(f"Anthropic rate limit — all retries exhausted: {e}")
             raise
         except anthropic.APIConnectionError as e:
             logger.error(f"Anthropic connection failed — check internet / API status: {e}")
