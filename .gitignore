@@ -46,3 +46,10 @@ helper_files/
 
 # Logs (generated at runtime, not needed in git)
 *.log
+
+# Resume source + compiled output — personal data
+profile/resume_base.tex
+profile/resume_base.pdf
+
+# VS Code LaTeX extension auto-generated directory
+tstex_modules/
