@@ -26,10 +26,10 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-22C55E?style=flat-square)](LICENSE)
 
 <!-- Live stats -->
-[![Agents](https://img.shields.io/badge/agents-8%20built-0ea5e9?style=flat-square)]()
+[![Agents](https://img.shields.io/badge/agents-9%20built-0ea5e9?style=flat-square)]()
 [![Companies](https://img.shields.io/badge/target%20companies-70-8b5cf6?style=flat-square)]()
 [![Cost](https://img.shields.io/badge/cost%20per%20run-~%240.04-10b981?style=flat-square)]()
-[![Phase](https://img.shields.io/badge/phase-B%20in%20progress-f59e0b?style=flat-square)]()
+[![Phase](https://img.shields.io/badge/phase-A%20complete-22c55e?style=flat-square)]()
 
 <br/>
 
@@ -150,8 +150,8 @@ Semantic skill extraction across all accumulated JDs. Not keyword matching — t
 |---|---|---|
 | **Persona Builder** | Terminal interview → `profile.json` (the source of truth for all agents) | ✅ Built |
 | **Market Intel** | Monitors YourStory / Inc42 / TechCrunch for new AI/ML funding rounds. Routes companies to watchlist or cold outreach | ✅ Built |
-| **Resume Agent** | Claude Sonnet rewrites your LaTeX resume bullets to lead with skills you have and mirror the JD's exact language | 🔨 Next |
-| **Referral Finder** | Finds people at target companies worth reaching out to — IIIT alumni, hiring managers, ML leads | 📋 Planned |
+| **Resume Agent** | 3-pass self-evaluation: Sonnet tailor → Haiku critic → Sonnet revise. Hallucination guard + ATS keyword mirroring enforced. ~$0.08–0.14/application | ✅ Built |
+| **Referral Finder** | Finds people at target companies worth reaching out to — IIIT alumni, hiring managers, ML leads | 🔨 Next |
 
 </details>
 
@@ -207,6 +207,11 @@ uv run python scripts/run_gap_analysis.py --top 15
 # Market intel — run weekly, not daily
 uv run python scripts/run_market_intel.py
 
+# Resume + cover letter for a specific job (3-pass self-evaluation)
+uv run python scripts/run_resume_agent.py --list
+uv run python scripts/run_resume_agent.py --job-id <job_id>
+uv run python scripts/run_resume_agent.py --job-id <job_id> --version
+
 # Verify all LLM providers are responding
 uv run python tests/test_llm_client.py
 ```
@@ -242,9 +247,23 @@ flowchart TD
         I1 -->|no| I4[skip]
     end
 
-    I3 --> V[data/artifacts/\njob_id/\njd.txt · scorecard · intel · gap]
+    I3 --> V[data/artifacts/job_id/\njd.txt · scorecard · intel]
 
-    G[Gap Analysis\nrun weekly] --> V
+    subgraph G[" Stage 4 · Gap Analysis  run once, then incremental "]
+        G1[LLM extracts skills\nfrom all JDs × 8 workers] --> G2[semantic match\nvs profile aliases]
+        G2 --> G3[gap.json per job\nhas / missing split]
+    end
+
+    V --> G
+
+    subgraph R[" Stage 5 · Resume Agent  per job "]
+        R1[Pass 1 — Tailor\nclaude-sonnet-4-6] --> R2[Pass 2 — Critique\nclaude-haiku-4-5]
+        R2 -->|issues found| R3[Pass 3 — Revise\nclaude-sonnet-4-6]
+        R2 -->|no issues| R4[use Pass 1 directly]
+    end
+
+    G3 --> R
+    R3 & R4 --> OUT[resume.tex · resume.pdf\ncover_letter.txt]
 ```
 
 <br/>
@@ -489,8 +508,8 @@ All model names live in `config.py` only — changing any model is a one-line ed
 | 🟢 | Master orchestrator — `run_dossier.py` | Done |
 | 🟢 | Market intel agent — funding news → company discovery → routing | Done |
 | 🟢 | Gap analysis agent — semantic extraction across 193 JDs | Done |
-| 🔨 | **Resume agent** — LaTeX bullet rewriting via Claude Sonnet | Next |
-| 📋 | Referral finder — people worth reaching out to at target companies | Planned |
+| 🟢 | Resume agent — 3-pass self-evaluation (tailor → critique → revise) | Done |
+| 🔨 | **Referral finder** — people worth reaching out to at target companies | Next |
 | 📋 | Cold outreach generator — personalised LinkedIn DM + email | Planned |
 | 📋 | Telegram alerts — URGENT jobs pushed within minutes of posting | Planned |
 | 🔮 | LTR scorer — trained on apply/response signal after 200+ labels | Future |
@@ -505,7 +524,7 @@ All model names live in `config.py` only — changing any model is a one-line ed
 | **Dossier Pro** | + Watchlist (70 companies) · company intel · orchestrator |
 | **Dossier Max** | + Market intel · gap analysis · referral finder · resume agent |
 
-Lite and Pro are ✅ built. Max is 🔨 in progress.
+Lite and Pro are ✅ built. Max is 🔨 in progress — gap analysis + resume agent done, referral finder next.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -525,6 +544,7 @@ dossier/
 │   ├── company_intel.py            Tavily + Wikipedia → structured intel per job
 │   ├── market_intel_agent.py       funding news → company discovery → routing
 │   ├── gap_analysis.py             semantic skill extraction → gap.json per job
+│   ├── resume_agent.py             3-pass resume tailoring + cover letter per job
 │   └── persona_builder.py          terminal interview → profile.json
 │
 ├── core/
@@ -539,7 +559,10 @@ dossier/
 ├── prompts/
 │   ├── job_scoring_system.txt      LLM scorer prompt
 │   ├── skill_extract_system.txt    gap analysis extraction + semantic matching rules
-│   └── ...
+│   ├── resume_tailor_system.txt    Pass 1 — 10-rule tailoring prompt (no fabrication)
+│   ├── resume_critique_system.txt  Pass 2 — 4-check audit (keyword mirror · hallucination · LaTeX · ordering)
+│   ├── resume_revise_system.txt    Pass 3 — surgical fix prompt (only flagged issues)
+│   └── cover_letter_system.txt     cover letter (250–320 words, 8 banned clichés)
 │
 ├── profile/
 │   ├── profile.json                your persona — source of truth (gitignored)
@@ -551,7 +574,8 @@ dossier/
 │   ├── run_watchlist.py            --min-score  --location
 │   ├── run_company_intel.py        --min-score  --source
 │   ├── run_gap_analysis.py         --force  --min-score  --top
-│   └── run_market_intel.py         run weekly
+│   ├── run_market_intel.py         run weekly
+│   └── run_resume_agent.py         --list  --job-id  --version
 │
 └── data/
     ├── dossier.db                  SQLite · all seen job URLs
@@ -562,7 +586,10 @@ dossier/
         ├── jd.txt                  raw job description
         ├── score_card.json         score · tier · urgency · reason · skills gap
         ├── intel.json              funding · headcount · ML focus · risk flags
-        └── gap.json                required/preferred skills · has/missing split (v2)
+        ├── gap.json                required/preferred skills · has/missing split (v2)
+        ├── resume.tex              tailored LaTeX resume (resume_v2.tex etc. with --version)
+        ├── resume.pdf              compiled PDF (pdflatex · page count checked)
+        └── cover_letter.txt        250–320 word tailored cover letter
 ```
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
