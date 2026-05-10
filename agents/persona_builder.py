@@ -119,6 +119,11 @@ INTERVIEW_QUESTIONS = [
         "question": "If someone at Google or Sarvam asked 'why should I refer you?' — what is your honest 3-sentence answer?",
         "hint": "The Referral Finder Agent uses this directly. Write in your own natural voice.",
     },
+    {
+        "id": "voice_sample",
+        "question": "Write 2–3 sentences as you'd write in a casual LinkedIn message introducing yourself to a hiring manager. Natural voice — not formal, not a pitch.",
+        "hint": "Example: 'Hey, I'm Shivang — AI Engineer at Publicis Sapient. I've spent the last year building a 3-stage LLM pipeline for pharma ad decomposition and I'm looking to move into a product company where I can go deeper on ML systems.'",
+    },
 ]
 
 SYNTHESIS_SYSTEM_PROMPT = """You are a profile synthesis engine for a job search system called Dossier.
@@ -135,6 +140,10 @@ Rules:
 - career_narrative: use their words, clean up typos only
 - The resume and LinkedIn are the source of truth for roles, dates, education
 - The interview adds depth and evidence that the resume cannot capture
+- short_title: 2-3 words used in casual intros (e.g. "AI Engineer", "Backend Engineer") — from questionnaire or infer from role
+- search_terms: 6-10 exact job title strings to pass to Indeed/LinkedIn job search APIs — must match how real job postings are titled (e.g. "Software Engineer", "SDE-2", not abbreviations like "SWE")
+- watchlist_title_keywords: 8-15 lowercase partial keywords to substring-match against job titles at target companies — shorter than full titles so they catch variants (e.g. "backend" catches "Backend Engineer" AND "Senior Backend Engineer"); infer domain from target roles
+- role_domain: classify as exactly one of: "ml_ai" (ML/AI/Data Science roles), "sde" (software engineering), "data" (data analyst/BI/analytics), "other"
 
 Output ONLY valid JSON. No markdown fences, no explanation, nothing before or after the JSON object.
 
@@ -142,15 +151,20 @@ Schema:
 {
   "identity": {
     "name": "string",
+    "short_title": "string",
     "current_role": "string",
     "current_company": "string",
     "months_experience": number,
     "current_ctc_lpa": number,
+    "notice_period_months": number,
     "education": "string",
     "location": "string"
   },
   "target": {
     "roles": ["string"],
+    "role_domain": "ml_ai or sde or data or other",
+    "search_terms": ["string"],
+    "watchlist_title_keywords": ["string"],
     "min_salary_lpa": number,
     "preferred_salary_lpa": number,
     "locations": ["string"],
@@ -169,11 +183,12 @@ Schema:
   ],
   "known_gaps": ["string"],
   "career_narrative": {
-    "why_ai_eng": "string",
+    "why_this_direction": "string",
     "strongest_asset": "string",
     "referral_pitch": "string",
     "good_week_looks_like": "string",
-    "hard_nos_detail": "string"
+    "hard_nos_detail": "string",
+    "voice_sample": "string"
   },
   "tone_ref": "profile/me/tone.md",
   "voice_ref": "profile/me/voice.md",
