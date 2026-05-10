@@ -8,6 +8,8 @@ profile/tone.md
 profile/voice.md
 profile/career_intent.md
 profile/writing_samples/
+# all per-user subdirectories (Anushthan, sambhav, etc.)
+profile/*/
 # profile/target_companies.json IS committed — it's a list of 50 companies, no personal data
 
 # Runtime data — generated, not source code
