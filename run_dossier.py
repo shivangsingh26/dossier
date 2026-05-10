@@ -1,31 +1,35 @@
 """
 run_dossier.py — Master orchestrator for the Dossier daily pipeline.
 
-Runs all three stages in sequence. Each stage is wrapped in try/except so a
-failure in one stage (e.g. LinkedIn goes down) does not abort the others.
+Runs all stages in sequence. Each stage is wrapped in try/except so a
+failure in one stage does not abort the others.
 
 MODES:
-  full          (default) — Discovery + Watchlist + Company Intel (Tavily cache-aware)
-  quick                   — Discovery + Watchlist, skip company intel (zero Tavily cost)
-  urgent                  — Discovery (forced 24h) + Watchlist, skip company intel
+  full          (default) — Discovery + Watchlist + Company Intel + Gap Analysis
+  quick                   — Discovery + Watchlist, skip company intel + gap analysis
+  urgent                  — Discovery (forced 24h) + Watchlist, no intel/gap
   company-intel           — Company Intel only, reads last-run files (no re-scraping)
 
+FLAGS:
+  --with-referrals  Also run Referral Finder for jobs scoring >= company-intel-score.
+                    Uses ~5 Tavily credits per job. Skipped by default.
+
 USAGE:
-  python run_dossier.py                                # full pipeline, last 72h
-  python run_dossier.py --hours 24                     # last 24 hours, full pipeline
-  python run_dossier.py --hours 6                      # only very recent jobs
-  python run_dossier.py --mode quick                   # discovery + watchlist, no company intel
-  python run_dossier.py --mode quick --hours 48        # 48h, no company intel
-  python run_dossier.py --mode urgent                  # forced 24h, no company intel
+  python run_dossier.py                                # full pipeline, last 24h
+  python run_dossier.py --hours 72                     # last 72 hours
+  python run_dossier.py --mode quick                   # discovery + watchlist only
+  python run_dossier.py --mode urgent                  # forced 24h, no intel/gap
   python run_dossier.py --mode company-intel           # fresh company intel on yesterday's jobs
+  python run_dossier.py --with-referrals               # also find referral contacts
   python run_dossier.py --min-score 6                  # stricter quality gate
   python run_dossier.py --company-intel-score 8        # only research top-scoring jobs
 
 COST GUIDE (approximate, after week-1 SQLite dedup fills up):
-  full:          ~$0.09 LLM + variable Tavily (cached companies = 0 credits)
-  quick:         ~$0.09 LLM, 0 Tavily
-  urgent:        ~$0.03 LLM, 0 Tavily
-  company-intel: ~$0.001 LLM + Tavily only for uncached companies
+  full:                ~$0.09 LLM + Tavily (cached = 0) + ~$0.002 gap analysis
+  full --with-referrals: add ~$0.005–$0.01 per high-score job (Tavily + gpt-5.4-mini)
+  quick:               ~$0.09 LLM, 0 Tavily
+  urgent:              ~$0.03 LLM, 0 Tavily
+  company-intel:       ~$0.001 LLM + Tavily only for uncached companies
 """
 
 import argparse
@@ -40,9 +44,9 @@ from rich.rule import Rule
 console = Console()
 
 _MODES = {
-    "full":          "Discovery + Watchlist + Company Intel (Tavily cache-aware)",
-    "quick":         "Discovery + Watchlist (no company intel, zero Tavily cost)",
-    "urgent":        "Discovery (forced 24h) + Watchlist (no company intel)",
+    "full":          "Discovery + Watchlist + Company Intel + Gap Analysis",
+    "quick":         "Discovery + Watchlist (no intel or gap analysis)",
+    "urgent":        "Discovery (forced 24h) + Watchlist (no intel or gap analysis)",
     "company-intel": "Company Intel only — reads last-run files, no re-scraping",
     "market-intel":  "Market Intel only — discover new AI/ML startups from funding news",
 }
@@ -79,6 +83,8 @@ def print_run_header(args: argparse.Namespace) -> None:
         console.print(f"  Min score:           {args.min_score}/10")
     if args.mode in ("full", "company-intel"):
         console.print(f"  Company Intel gate:  {args.company_intel_score}/10  (research only jobs above this)")
+    console.print(f"  Gap Analysis:        {'yes (new JDs only)' if args.mode in ('full', 'company-intel') else 'skipped'}")
+    console.print(f"  Referral Finder:     {'yes (jobs >= ' + str(args.company_intel_score) + ')' if args.with_referrals else 'skipped (use --with-referrals)'}")
     console.print(f"  Location:            {args.location}")
     console.print(f"  Started:             {datetime.now().strftime('%Y-%m-%d  %H:%M')}")
     console.print()
@@ -132,6 +138,13 @@ def main() -> None:
         "--location", type=str, default="India",
         help="Location filter for watchlist LinkedIn searches. (default: India)",
     )
+    parser.add_argument(
+        "--with-referrals", action="store_true", default=False,
+        help=(
+            "Also run Referral Finder for jobs scoring >= company-intel-score.\n"
+            "Uses ~5 Tavily credits per job. Off by default."
+        ),
+    )
     args = parser.parse_args()
 
     # urgent mode always collapses to 24h regardless of --hours
@@ -142,6 +155,8 @@ def main() -> None:
     run_discovery     = args.mode in ("full", "quick", "urgent")
     run_watchlist     = args.mode in ("full", "quick", "urgent")
     run_company_intel = args.mode in ("full", "company-intel")
+    run_gap_analysis  = args.mode in ("full", "company-intel")
+    run_referrals     = args.with_referrals
 
     print_run_header(args)
 
@@ -158,6 +173,8 @@ def main() -> None:
         "discovery_jobs":          0,
         "watchlist_jobs":          0,
         "company_intel_companies": 0,
+        "gap_analysis_processed":  0,
+        "referrals_found":         0,
         "stage_errors":            [],
         "total_seconds":           0.0,
     }
@@ -275,6 +292,67 @@ def main() -> None:
             console.print(f"\n  [red]✗ Company Intel failed:[/red] {exc}")
             summary["stage_errors"].append(f"company_intel: {exc}")
 
+    # ── Stage 4: Gap Analysis ─────────────────────────────────────────────────
+    if run_gap_analysis:
+        print_stage_banner(
+            "Stage 4 — Gap Analysis",
+            f"semantic skill extraction for new high-score jobs · min score {args.min_score}",
+        )
+        t0 = time.monotonic()
+        try:
+            from agents.gap_analysis import run as _gap_analysis
+            # force=False → only processes JDs that don't have gap.json yet (new jobs only)
+            result = _gap_analysis(force=False, min_score=args.min_score) or {}
+            processed = result.get("new_extracted", 0)
+            summary["gap_analysis_processed"] = processed
+            summary["stages_run"].append("gap_analysis")
+            console.print(
+                f"\n  [green]✓ Gap Analysis complete[/green] — "
+                f"{processed} JDs processed · {time.monotonic() - t0:.0f}s"
+            )
+        except Exception as exc:
+            console.print(f"\n  [red]✗ Gap Analysis failed:[/red] {exc}")
+            summary["stage_errors"].append(f"gap_analysis: {exc}")
+
+    # ── Stage 5: Referral Finder ──────────────────────────────────────────────
+    if run_referrals:
+        # Collect job IDs for high-score jobs that don't already have referrals.json
+        all_jobs    = discovery_jobs + watchlist_jobs
+        target_jobs = [
+            j for j in all_jobs
+            if j.get("score", 0) >= args.company_intel_score
+            and not (Path("data/artifacts") / j["job_id"] / "referrals.json").exists()
+        ]
+        print_stage_banner(
+            "Stage 5 — Referral Finder",
+            f"{len(target_jobs)} jobs scoring ≥ {args.company_intel_score} without referrals yet",
+        )
+        t0 = time.monotonic()
+        total_referrals = 0
+        try:
+            from agents.referral_finder import run_referral_finder
+            for job in target_jobs:
+                job_id = job["job_id"]
+                try:
+                    contacts = run_referral_finder(job_id, skip_csv=False) or []
+                    total_referrals += len(contacts)
+                    console.print(
+                        f"  [cyan]{job_id}[/cyan] — {len(contacts)} contacts found"
+                    )
+                except Exception as exc:
+                    console.print(f"  [yellow]✗ {job_id}: {exc}[/yellow]")
+                    summary["stage_errors"].append(f"referrals/{job_id}: {exc}")
+            summary["referrals_found"] = total_referrals
+            summary["stages_run"].append("referrals")
+            console.print(
+                f"\n  [green]✓ Referral Finder complete[/green] — "
+                f"{total_referrals} contacts across {len(target_jobs)} jobs · "
+                f"{time.monotonic() - t0:.0f}s"
+            )
+        except Exception as exc:
+            console.print(f"\n  [red]✗ Referral Finder failed:[/red] {exc}")
+            summary["stage_errors"].append(f"referrals: {exc}")
+
     # ── Final Summary ─────────────────────────────────────────────────────────
     total_seconds            = time.monotonic() - pipeline_start
     summary["total_seconds"] = round(total_seconds, 1)
@@ -286,6 +364,10 @@ def main() -> None:
     console.print(f"  Discovery:       {summary['discovery_jobs']} jobs")
     console.print(f"  Watchlist:       {summary['watchlist_jobs']} jobs")
     console.print(f"  Company Intel:   {summary['company_intel_companies']} companies researched")
+    if run_gap_analysis:
+        console.print(f"  Gap Analysis:    {summary['gap_analysis_processed']} JDs processed")
+    if run_referrals:
+        console.print(f"  Referrals:       {summary['referrals_found']} contacts found")
     console.print(f"  Total time:      {total_seconds:.0f}s")
 
     if summary["stage_errors"]:

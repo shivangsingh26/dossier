@@ -94,6 +94,9 @@ _ML_TITLE_KEYWORDS = [
     "personalization",      # Recommendation/personalisation engineering
     "visual search",        # Myntra, Lenskart — CV for fashion/eyewear
     "quantitative",         # Quant researcher/analyst at fintech targets
+    "ai researcher",        # Sarvam AI, Krutrim — research-track titles
+    "ai platform",          # Krutrim, infra-layer AI platform roles
+    "model engineer",       # Foundation model infra titles at AI-native startups
 ]
 
 _INDIA_LOCATION_KEYWORDS = [
