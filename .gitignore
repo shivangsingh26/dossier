@@ -50,6 +50,8 @@ helper_files/
 # Resume source + compiled output — personal data
 profile/resume_base.tex
 profile/resume_base.pdf
+profile/resume_base.aux
+profile/resume_base.out
 
 # VS Code LaTeX extension auto-generated directory
 tstex_modules/

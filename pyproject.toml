@@ -14,42 +14,34 @@ dependencies = [
     "openai>=2.33.0",
     # anthropic: used only for Resume Agent + Cover Letter (LaTeX precision + best writing)
     "anthropic>=0.97.0",
-
     # --- Config ---
     # python-dotenv: loads .env file into os.environ at startup
     "python-dotenv>=1.2.2",
-
     # --- HTTP ---
     # httpx: async-capable HTTP client — used for API calls in Step 2+
     "httpx>=0.28.1",
     # requests: simple sync HTTP — used for lightweight scraping and watchlist checks
     "requests>=2.33.1",
-
     # --- Database ---
     # aiosqlite: async SQLite — job deduplication, run history, jd_skills storage
     "aiosqlite>=0.22.1",
-
     # --- Google Integration (Step 3+) ---
     # gspread: read/write to Google Sheets — the live job tracker dashboard
     "gspread>=6.2.1",
     # google-auth + oauthlib: service account + OAuth2 flows for Sheets and Gmail
     "google-auth>=2.50.0",
     "google-auth-oauthlib>=1.3.1",
-
     # --- Telegram (Step 2+) ---
     # python-telegram-bot: URGENT job alerts, daily digest, human approval flows
     # Note: v20+ requires asyncio. We use it in async context from Step 2 onward.
     "python-telegram-bot>=22.7",
-
     # --- PDF Parsing (Step 1 — Persona Builder) ---
     # pymupdf: parse resume.pdf and linkedin.pdf into text for profile.json generation
     # Import in code as: import fitz  (not pymupdf)
     "pymupdf>=1.27.2.3",
-
     # --- Terminal Output ---
     # rich: pretty tables and formatted output in verify_setup.py and run scripts
     "rich>=15.0.0",
-
     # --- Job Search ---
     # python-jobspy: scrapes LinkedIn, Indeed, Naukri, Google Jobs, Glassdoor in one call
     # No API key needed. hours_old parameter filters for fresh listings only.
