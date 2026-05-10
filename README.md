@@ -4,32 +4,24 @@
 
 <br/>
 
-```
-██████╗  ██████╗ ███████╗███████╗██╗███████╗██████╗
-██╔══██╗██╔═══██╗██╔════╝██╔════╝██║██╔════╝██╔══██╗
-██║  ██║██║   ██║███████╗███████╗██║█████╗  ██████╔╝
-██║  ██║██║   ██║╚════██║╚════██║██║██╔══╝  ██╔══██╗
-██████╔╝╚██████╔╝███████║███████║██║███████╗██║  ██║
-╚═════╝  ╚═════╝ ╚══════╝╚══════╝╚═╝╚══════╝╚═╝  ╚═╝
-```
+<img src=".github/assets/banner.svg" alt="Dossier" width="900"/>
 
-**Autonomous job search intelligence for ML/AI engineers.**<br/>
-*Apply smarter. Reach earlier. Improve every week.*
+<br/><br/>
+
+<!-- Tech stack -->
+[![Python](https://img.shields.io/badge/Python-3.12+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
+[![uv](https://img.shields.io/badge/uv-package%20manager-7C3AED?style=for-the-badge)](https://docs.astral.sh/uv/)
+[![OpenAI](https://img.shields.io/badge/OpenAI-GPT--5.4--mini-412991?style=for-the-badge&logo=openai&logoColor=white)](https://platform.openai.com/)
+[![Anthropic](https://img.shields.io/badge/Anthropic-Claude%20Sonnet-D97757?style=for-the-badge)](https://anthropic.com/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-22C55E?style=for-the-badge)](LICENSE)
 
 <br/>
 
-<!-- Tech stack -->
-[![Python](https://img.shields.io/badge/Python-3.12+-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
-[![uv](https://img.shields.io/badge/uv-package%20manager-7C3AED?style=flat-square)](https://docs.astral.sh/uv/)
-[![OpenAI](https://img.shields.io/badge/OpenAI-GPT--5.4--mini-412991?style=flat-square&logo=openai&logoColor=white)](https://platform.openai.com/)
-[![Anthropic](https://img.shields.io/badge/Anthropic-Claude%20Sonnet-D97757?style=flat-square)](https://anthropic.com/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-22C55E?style=flat-square)](LICENSE)
-
 <!-- Live stats -->
-[![Agents](https://img.shields.io/badge/agents-8%20built-0ea5e9?style=flat-square)]()
-[![Companies](https://img.shields.io/badge/target%20companies-70-8b5cf6?style=flat-square)]()
-[![Cost](https://img.shields.io/badge/cost%20per%20run-~%240.04-10b981?style=flat-square)]()
-[![Phase](https://img.shields.io/badge/phase-A%20complete-22c55e?style=flat-square)]()
+[![Agents](https://img.shields.io/badge/agents-8%20built-0ea5e9?style=for-the-badge)]()
+[![Companies](https://img.shields.io/badge/target%20companies-70-8b5cf6?style=for-the-badge)]()
+[![Cost](https://img.shields.io/badge/cost%20per%20run-~%240.04-10b981?style=for-the-badge)]()
+[![Phase](https://img.shields.io/badge/phase-A%20complete-22c55e?style=for-the-badge)]()
 
 <br/>
 
@@ -53,16 +45,66 @@ Job boards give you *more*. Dossier gives you *signal*.
 
 <br/>
 
-|  | Job boards | Mass-apply bots | **Dossier** |
-|:--|:--:|:--:|:--:|
-| Finds roles at *your* target companies | sometimes | ✗ | **✓** |
-| Scores against *your specific* profile | ✗ | ✗ | **✓** |
-| Eliminates 60% of noise before spending anything | ✗ | ✗ | **✓** |
-| Researches the company before you click apply | ✗ | ✗ | **✓** |
-| Tells you which skills you're actually missing | ✗ | ✗ | **✓** |
-| Finds promoted listings keyword search never sees | ✗ | ✗ | **✓** |
-| Cost per week of daily runs | $0 | $20–50/mo | **~$0.30** |
-| Applications sent | high volume | very high | **fewer, better** |
+<table>
+<thead>
+<tr>
+<th align="left"></th>
+<th align="center">Job boards</th>
+<th align="center">Mass-apply bots</th>
+<th align="center" bgcolor="#0d2137"><strong>✦ Dossier</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Finds roles at <em>your</em> target companies</td>
+<td align="center">sometimes</td>
+<td align="center">✗</td>
+<td align="center" bgcolor="#0d2137"><strong>✓</strong></td>
+</tr>
+<tr>
+<td>Scores against <em>your specific</em> profile</td>
+<td align="center">✗</td>
+<td align="center">✗</td>
+<td align="center" bgcolor="#0d2137"><strong>✓</strong></td>
+</tr>
+<tr>
+<td>Eliminates 60% of noise before spending anything</td>
+<td align="center">✗</td>
+<td align="center">✗</td>
+<td align="center" bgcolor="#0d2137"><strong>✓</strong></td>
+</tr>
+<tr>
+<td>Researches the company before you click apply</td>
+<td align="center">✗</td>
+<td align="center">✗</td>
+<td align="center" bgcolor="#0d2137"><strong>✓</strong></td>
+</tr>
+<tr>
+<td>Tells you which skills you're actually missing</td>
+<td align="center">✗</td>
+<td align="center">✗</td>
+<td align="center" bgcolor="#0d2137"><strong>✓</strong></td>
+</tr>
+<tr>
+<td>Finds promoted listings keyword search never sees</td>
+<td align="center">✗</td>
+<td align="center">✗</td>
+<td align="center" bgcolor="#0d2137"><strong>✓</strong></td>
+</tr>
+<tr>
+<td>Cost per week of daily runs</td>
+<td align="center">$0</td>
+<td align="center">$20–50/mo</td>
+<td align="center" bgcolor="#0d2137"><strong>~$0.30</strong></td>
+</tr>
+<tr>
+<td>Applications sent</td>
+<td align="center">high volume</td>
+<td align="center">very high</td>
+<td align="center" bgcolor="#0d2137"><strong>fewer, better</strong></td>
+</tr>
+</tbody>
+</table>
 
 <br/>
 
@@ -620,7 +662,7 @@ Built for engineers who want to work at places worth working at.
 
 <br/>
 
-[![Star this repo](https://img.shields.io/github/stars/shivangsingh26/dossier?style=flat-square&color=fbbf24&label=★%20Star%20this%20repo)](https://github.com/shivangsingh26/dossier)
+[![Star this repo](https://img.shields.io/github/stars/shivangsingh26/dossier?style=for-the-badge&color=fbbf24&label=★%20Star%20this%20repo)](https://github.com/shivangsingh26/dossier)
 
 <br/>
 
