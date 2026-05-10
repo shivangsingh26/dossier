@@ -384,7 +384,7 @@ def _parse_linkedin_result(result: dict, connection_type: str, company_name: str
 
     if " - " in title:
         parts = title.split(" - ", 1)
-        name = parts[0].strip()
+        name = parts[0].strip().title()  # normalise ALL-CAPS scraped names
         role_part = parts[1]
         # Strip trailing " | LinkedIn" suffix
         role_part = re.sub(r"\s*\|\s*LinkedIn.*$", "", role_part).strip()
@@ -415,6 +415,9 @@ def _parse_linkedin_result(result: dict, connection_type: str, company_name: str
         return None
 
     relevance = _score_title_relevance(role_str)
+    role_lower_for_seniority = (role_str or "").lower()
+    _SENIOR_WORDS = {"director", "vp ", "vice president", "head of", "chief", "principal", "staff", "fellow"}
+    is_senior = any(w in role_lower_for_seniority for w in _SENIOR_WORDS)
 
     # Role relevance filter: drop pure SWE/non-DS contacts.
     # Keep if: score >= 1 (ML/DS/manager keyword present) OR title contains "data".
@@ -427,6 +430,15 @@ def _parse_linkedin_result(result: dict, connection_type: str, company_name: str
     # Clean up URL — remove tracking params after the profile slug
     clean_url = re.sub(r"\?.*$", "", href)
 
+    # Confidence: senior contacts (Director/VP/Head) are unlikely to process referrals
+    # directly — they need a different message tone. Mid-level ML match = high.
+    if is_senior:
+        confidence = "low"
+    elif relevance >= 2:
+        confidence = "high"
+    else:
+        confidence = "medium"
+
     return {
         "name": name,
         "title": role_str or "Unknown",
@@ -434,7 +446,8 @@ def _parse_linkedin_result(result: dict, connection_type: str, company_name: str
         "linkedin_url": clean_url,
         "tier": 2,
         "connection_type": connection_type,
-        "confidence": "medium",
+        "confidence": confidence,
+        "is_senior": is_senior,
         "relevance_score": relevance,
     }
 
@@ -575,6 +588,14 @@ def generate_cold_message(
         links_lines.append(f"Job link: {job_url}")
     links_block = "\n".join(links_lines) if links_lines else "(no links available)"
 
+    is_senior = contact.get("is_senior", False)
+    ask_hint = (
+        "Recipient is senior (Director/VP/Head). Do NOT ask for a referral. "
+        "Instead, ask briefly for their perspective on the team or role — 1 sentence."
+    ) if is_senior else (
+        "Ask directly for a referral or to be pointed to the right person. Low pressure."
+    )
+
     user_prompt = f"""Write a LinkedIn cold message. Details below.
 
 Sender: {profile_ctx['name']}, {profile_ctx['short_title']} at {profile_ctx['current_company']}
@@ -585,6 +606,8 @@ Connection context: {connection_hint}
 
 Role being applied for: {job_title or 'ML/AI Engineer'} at {contact['company']}
 Company ML context (use 1 specific detail if interesting): {company_focus or 'not available'}
+
+Ask instruction: {ask_hint}
 
 Links to include in the message exactly as written:
 {links_block}"""
@@ -676,8 +699,9 @@ def run_referral_finder(job_id: str, skip_csv: bool = False) -> list[dict]:
         message = generate_cold_message(contact, profile_ctx, intel, gap, job_title, job_url, llm, config)
         contact["outreach_hook"] = message
         contact["status"] = "pending"
-        # Remove internal ranking key before saving
+        # Remove internal keys before saving
         contact.pop("relevance_score", None)
+        contact.pop("is_senior", None)
 
     # --- Save output ---
     out_dir = config.artifacts_dir / job_id

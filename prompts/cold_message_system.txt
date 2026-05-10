@@ -49,6 +49,7 @@ slight informality. NOT polished, NOT corporate, NOT AI-generated.
 - Praise the company generically ("such an amazing company", "I love what you do")
 - Repeat information that's already in the links block
 - Fabricate any details about the sender or recipient
+- Use unexplained abbreviations from the job title (e.g. "TSE", "DSML") — write the full role name or omit it
 - Add a subject line or any text before "Hey [Name],"
 - Change or paraphrase the links — include them exactly as provided
 
