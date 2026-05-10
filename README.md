@@ -26,7 +26,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-22C55E?style=flat-square)](LICENSE)
 
 <!-- Live stats -->
-[![Agents](https://img.shields.io/badge/agents-9%20built-0ea5e9?style=flat-square)]()
+[![Agents](https://img.shields.io/badge/agents-8%20built-0ea5e9?style=flat-square)]()
 [![Companies](https://img.shields.io/badge/target%20companies-70-8b5cf6?style=flat-square)]()
 [![Cost](https://img.shields.io/badge/cost%20per%20run-~%240.04-10b981?style=flat-square)]()
 [![Phase](https://img.shields.io/badge/phase-A%20complete-22c55e?style=flat-square)]()
@@ -151,7 +151,7 @@ Semantic skill extraction across all accumulated JDs. Not keyword matching — t
 | **Persona Builder** | Terminal interview → `profile.json` (the source of truth for all agents) | ✅ Built |
 | **Market Intel** | Monitors YourStory / Inc42 / TechCrunch for new AI/ML funding rounds. Routes companies to watchlist or cold outreach | ✅ Built |
 | **Resume Agent** | 3-pass self-evaluation: Sonnet tailor → Haiku critic → Sonnet revise. Hallucination guard + ATS keyword mirroring enforced. ~$0.08–0.14/application | ✅ Built |
-| **Referral Finder** | Finds people at target companies worth reaching out to — IIIT alumni, hiring managers, ML leads | 🔨 Next |
+| **Referral Finder** | 3-tier contact search: warm LinkedIn connections → cold Tavily search → personalised LLM cold message per contact. Confidence-scored, seniority-aware | ✅ Built |
 
 </details>
 
@@ -207,10 +207,18 @@ uv run python scripts/run_gap_analysis.py --top 15
 # Market intel — run weekly, not daily
 uv run python scripts/run_market_intel.py
 
+# Referral finder — warm connections + cold Tavily search + LLM cold messages
+uv run python scripts/run_referral_finder.py --list
+uv run python scripts/run_referral_finder.py --job-id <job_id>
+uv run python scripts/run_referral_finder.py --job-id <job_id> --no-csv
+
 # Resume + cover letter for a specific job (3-pass self-evaluation)
 uv run python scripts/run_resume_agent.py --list
 uv run python scripts/run_resume_agent.py --job-id <job_id>
 uv run python scripts/run_resume_agent.py --job-id <job_id> --version
+
+# Onboard a new user — generate a fillable questionnaire
+uv run python scripts/export_questionnaire.py --user <name>
 
 # Verify all LLM providers are responding
 uv run python tests/test_llm_client.py
@@ -431,14 +439,18 @@ Auric AI Labs · Haptik
 {
   "identity": {
     "name": "Your Name",
+    "short_title": "AI Engineer",
     "total_experience_months": 20,
+    "notice_period_months": 2,
     "location": "Bengaluru"
   },
   "target": {
     "roles": ["MLE-1", "AI Engineer", "Data Scientist"],
+    "role_domain": "ml_ai",
+    "search_terms": ["Machine Learning Engineer", "LLM Engineer", "..."],
+    "watchlist_title_keywords": ["machine learning", "data scientist", "llm", "..."],
     "min_salary_lpa": 25,
-    "switch_timeline_months": 8,
-    "search_terms": ["Machine Learning Engineer", "LLM Engineer", "..."]
+    "switch_timeline_months": 8
   },
   "skills": [
     {
@@ -478,7 +490,7 @@ Cost is matched to task complexity. High-volume tasks use the cheapest reliable 
 | Company intel synthesis | `gpt-5.4-mini` | nano | Noisy scraped data needs reasoning |
 | Market intel extraction | `gpt-5.4-mini` | nano | Structured JSON from news snippets |
 | Persona builder | `gpt-5` | quality | Conversational depth matters |
-| Cold message drafting | `gpt-5` | quality | Tone matching requires the best model |
+| Cold message drafting | `gpt-5.4-mini` | nano | Prompt-driven quality; gpt-5 caused silent empty outputs |
 | Cover letter | `claude-haiku-4-5` | claude | Good writing, cost-efficient |
 | Resume bullets (LaTeX) | `claude-sonnet-4-6` | claude | LaTeX-aware, highest precision |
 
@@ -509,8 +521,8 @@ All model names live in `config.py` only — changing any model is a one-line ed
 | 🟢 | Market intel agent — funding news → company discovery → routing | Done |
 | 🟢 | Gap analysis agent — semantic extraction across 193 JDs | Done |
 | 🟢 | Resume agent — 3-pass self-evaluation (tailor → critique → revise) | Done |
-| 🔨 | **Referral finder** — people worth reaching out to at target companies | Next |
-| 📋 | Cold outreach generator — personalised LinkedIn DM + email | Planned |
+| 🟢 | Referral finder — 3-tier contact search + personalised cold messages | Done |
+| 🔨 | **Cold outreach generator** — structured send queue, follow-up tracking | Next |
 | 📋 | Telegram alerts — URGENT jobs pushed within minutes of posting | Planned |
 | 🔮 | LTR scorer — trained on apply/response signal after 200+ labels | Future |
 
@@ -524,7 +536,7 @@ All model names live in `config.py` only — changing any model is a one-line ed
 | **Dossier Pro** | + Watchlist (70 companies) · company intel · orchestrator |
 | **Dossier Max** | + Market intel · gap analysis · referral finder · resume agent |
 
-Lite and Pro are ✅ built. Max is 🔨 in progress — gap analysis + resume agent done, referral finder next.
+Lite and Pro are ✅ built. Max is ✅ feature-complete — gap analysis + resume agent + referral finder all done. Cold outreach queue is next.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -544,6 +556,7 @@ dossier/
 │   ├── company_intel.py            Tavily + Wikipedia → structured intel per job
 │   ├── market_intel_agent.py       funding news → company discovery → routing
 │   ├── gap_analysis.py             semantic skill extraction → gap.json per job
+│   ├── referral_finder.py          3-tier contact search → referrals.json + cold messages
 │   ├── resume_agent.py             3-pass resume tailoring + cover letter per job
 │   └── persona_builder.py          terminal interview → profile.json
 │
@@ -575,7 +588,9 @@ dossier/
 │   ├── run_company_intel.py        --min-score  --source
 │   ├── run_gap_analysis.py         --force  --min-score  --top
 │   ├── run_market_intel.py         run weekly
-│   └── run_resume_agent.py         --list  --job-id  --version
+│   ├── run_referral_finder.py      --list  --job-id  --no-csv
+│   ├── run_resume_agent.py         --list  --job-id  --version
+│   └── export_questionnaire.py     --user <name>  (generate fillable questionnaire for other users)
 │
 └── data/
     ├── dossier.db                  SQLite · all seen job URLs
@@ -587,6 +602,7 @@ dossier/
         ├── score_card.json         score · tier · urgency · reason · skills gap
         ├── intel.json              funding · headcount · ML focus · risk flags
         ├── gap.json                required/preferred skills · has/missing split (v2)
+        ├── referrals.json          contacts found (name · title · tier · confidence · cold message)
         ├── resume.tex              tailored LaTeX resume (resume_v2.tex etc. with --version)
         ├── resume.pdf              compiled PDF (pdflatex · page count checked)
         └── cover_letter.txt        250–320 word tailored cover letter
