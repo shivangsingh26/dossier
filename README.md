@@ -122,7 +122,9 @@ Eight agents working together. Each is independently useful.
 
 <table>
 <tr>
-<td width="50%" valign="top">
+<td width="50%" valign="top" bgcolor="#0d1a2e">
+
+![](https://img.shields.io/badge/STAGE_1-3b82f6?style=flat-square)
 
 ### 🔍 Job Discovery
 Multi-source keyword search across **Indeed + LinkedIn** using 10 profile-driven search terms. A rule-based pre-filter eliminates ~60% of results before spending a single LLM token. The survivors are parallel-scored in ~2 minutes.
@@ -132,10 +134,12 @@ Multi-source keyword search across **Indeed + LinkedIn** using 10 profile-driven
                                                     ┗ ~31 high relevancy
 ```
 
-⏱ ~2 min &nbsp;·&nbsp; 💰 ~$0.04/run &nbsp;·&nbsp; 8 parallel workers
+![](https://img.shields.io/badge/~2_min-1d4ed8?style=flat-square) &nbsp;![](https://img.shields.io/badge/$0.04%2Frun-16a34a?style=flat-square) &nbsp;![](https://img.shields.io/badge/8_workers-7c3aed?style=flat-square)
 
 </td>
-<td width="50%" valign="top">
+<td width="50%" valign="top" bgcolor="#130c26">
+
+![](https://img.shields.io/badge/STAGE_2-8b5cf6?style=flat-square)
 
 ### 🎯 Watchlist Agent
 Company-specific search across **70 hand-picked companies** using LinkedIn `f_C=` filters, Greenhouse, and Lever free JSON APIs. Catches promoted listings that keyword search never surfaces.
@@ -145,12 +149,14 @@ Company-specific search across **70 hand-picked companies** using LinkedIn `f_C=
                                                      ┗ ~6 high relevancy
 ```
 
-⏱ ~3 min &nbsp;·&nbsp; 💰 ~$0.01/run &nbsp;·&nbsp; 4 fetch strategies
+![](https://img.shields.io/badge/~3_min-1d4ed8?style=flat-square) &nbsp;![](https://img.shields.io/badge/$0.01%2Frun-16a34a?style=flat-square) &nbsp;![](https://img.shields.io/badge/4_fetch_strategies-7c3aed?style=flat-square)
 
 </td>
 </tr>
 <tr>
-<td width="50%" valign="top">
+<td width="50%" valign="top" bgcolor="#1a1400">
+
+![](https://img.shields.io/badge/STAGE_3-d97706?style=flat-square)
 
 ### 🏢 Company Intel
 For every job scoring ≥ 7/10: one command replaces 30 minutes of Googling. Funding stage, headcount estimate, ML focus, risk flags, recent news — synthesised from Tavily + Wikipedia into a structured JSON artifact. 7-day cache keeps costs near zero.
@@ -161,10 +167,12 @@ score ≥ 7  ──Tavily (×2)──▶  raw snippets
            ──GPT-5.4-mini──▶  intel.json
 ```
 
-💰 ~$0.02/job &nbsp;·&nbsp; 7-day cache &nbsp;·&nbsp; ~70% cache hit in steady state
+![](https://img.shields.io/badge/$0.02%2Fjob-16a34a?style=flat-square) &nbsp;![](https://img.shields.io/badge/7--day_cache-d97706?style=flat-square) &nbsp;![](https://img.shields.io/badge/~70%25_cache_hit-7c3aed?style=flat-square)
 
 </td>
-<td width="50%" valign="top">
+<td width="50%" valign="top" bgcolor="#08180a">
+
+![](https://img.shields.io/badge/STAGE_4-059669?style=flat-square)
 
 ### 📊 Gap Analysis
 Semantic skill extraction across all accumulated JDs. Not keyword matching — the LLM reads your full profile and reasons about capability equivalence. Tells you exactly what the market wants that you don't claim yet.
@@ -175,7 +183,7 @@ Semantic skill extraction across all accumulated JDs. Not keyword matching — t
          ──aggregate──▶  gap_report.json
 ```
 
-💰 ~$0.73 one-time &nbsp;·&nbsp; incremental after &nbsp;·&nbsp; 192/193 JDs processed
+![](https://img.shields.io/badge/$0.73_one--time-16a34a?style=flat-square) &nbsp;![](https://img.shields.io/badge/incremental_after-059669?style=flat-square) &nbsp;![](https://img.shields.io/badge/192%2F193_JDs-7c3aed?style=flat-square)
 
 </td>
 </tr>
@@ -188,12 +196,33 @@ Semantic skill extraction across all accumulated JDs. Not keyword matching — t
 
 <br/>
 
-| Agent | What it does | Status |
-|---|---|---|
-| **Persona Builder** | Terminal interview → `profile.json` (the source of truth for all agents) | ✅ Built |
-| **Market Intel** | Monitors YourStory / Inc42 / TechCrunch for new AI/ML funding rounds. Routes companies to watchlist or cold outreach | ✅ Built |
-| **Resume Agent** | 3-pass self-evaluation: Sonnet tailor → Haiku critic → Sonnet revise. Hallucination guard + ATS keyword mirroring enforced. ~$0.08–0.14/application | ✅ Built |
-| **Referral Finder** | 3-tier contact search: warm LinkedIn connections → cold Tavily search → personalised LLM cold message per contact. Confidence-scored, seniority-aware | ✅ Built |
+<table>
+<thead>
+<tr><th align="left">Agent</th><th align="left">What it does</th><th align="center">Status</th></tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Persona Builder</strong></td>
+<td>Terminal interview → <code>profile.json</code> (the source of truth for all agents)</td>
+<td align="center" bgcolor="#0a1e0a">![](https://img.shields.io/badge/-Built-22c55e?style=flat-square)</td>
+</tr>
+<tr>
+<td><strong>Market Intel</strong></td>
+<td>Monitors YourStory / Inc42 / TechCrunch for new AI/ML funding rounds. Routes companies to watchlist or cold outreach</td>
+<td align="center" bgcolor="#0a1e0a">![](https://img.shields.io/badge/-Built-22c55e?style=flat-square)</td>
+</tr>
+<tr>
+<td><strong>Resume Agent</strong></td>
+<td>3-pass self-evaluation: Sonnet tailor → Haiku critic → Sonnet revise. Hallucination guard + ATS keyword mirroring enforced. ~$0.08–0.14/application</td>
+<td align="center" bgcolor="#0a1e0a">![](https://img.shields.io/badge/-Built-22c55e?style=flat-square)</td>
+</tr>
+<tr>
+<td><strong>Referral Finder</strong></td>
+<td>3-tier contact search: warm LinkedIn connections → cold Tavily search → personalised LLM cold message per contact. Confidence-scored, seniority-aware</td>
+<td align="center" bgcolor="#0a1e0a">![](https://img.shields.io/badge/-Built-22c55e?style=flat-square)</td>
+</tr>
+</tbody>
+</table>
 
 </details>
 
@@ -375,18 +404,18 @@ The scraper uses `requests.Session()` for TCP reuse, exponential backoff on 429 
 
 <table>
 <tr>
-<td valign="top" width="22%">
+<td valign="top" width="22%" bgcolor="#1a0a0a">
 
-**MAANG** `6`
+![](https://img.shields.io/badge/MAANG-ef4444?style=flat-square) &nbsp;`6`
 
 Google · Microsoft
 Amazon · Meta
 Apple · Netflix
 
 </td>
-<td valign="top" width="26%">
+<td valign="top" width="26%" bgcolor="#0d1530">
 
-**Top Global Product** `19`
+![](https://img.shields.io/badge/Top_Global_Product-3b82f6?style=flat-square) &nbsp;`19`
 
 Uber · Stripe · Adobe · Atlassian
 Salesforce · Intuit · NVIDIA · AMD
@@ -396,9 +425,9 @@ Wayfair · Target · Hotstar
 Zoho · Walmart GTC
 
 </td>
-<td valign="top" width="30%">
+<td valign="top" width="30%" bgcolor="#08180a">
 
-**Top Indian Product** `30`
+![](https://img.shields.io/badge/Top_Indian_Product-22c55e?style=flat-square) &nbsp;`30`
 
 Flipkart · Zepto · Swiggy · Meesho
 Razorpay · PhonePe · CRED · Dream11
@@ -411,9 +440,9 @@ Urban Company · Rapido · Lenskart
 Porter · ixigo · OYO · MPL
 
 </td>
-<td valign="top" width="22%">
+<td valign="top" width="22%" bgcolor="#130c26">
 
-**AI Startups** `10`
+![](https://img.shields.io/badge/AI_Startups-8b5cf6?style=flat-square) &nbsp;`10`
 
 Sarvam AI · Krutrim AI
 Uniphore · Yellow.ai
@@ -485,16 +514,53 @@ Cost is matched to task complexity. High-volume tasks use the cheapest reliable 
 
 <br/>
 
-| Task | Model | Tier | Reason |
-|---|---|---|---|
-| Job scoring | `gpt-5.4-mini` | nano | Runs on every job — cost is the only constraint |
-| Skill extraction (gap) | `gpt-5.4-mini` | nano | Batch across 200+ JDs |
-| Company intel synthesis | `gpt-5.4-mini` | nano | Noisy scraped data needs reasoning |
-| Market intel extraction | `gpt-5.4-mini` | nano | Structured JSON from news snippets |
-| Persona builder | `gpt-5` | quality | Conversational depth matters |
-| Cold message drafting | `gpt-5.4-mini` | nano | Prompt-driven quality; gpt-5 caused silent empty outputs |
-| Cover letter | `claude-haiku-4-5` | claude | Good writing, cost-efficient |
-| Resume bullets (LaTeX) | `claude-sonnet-4-6` | claude | LaTeX-aware, highest precision |
+<table>
+<thead>
+<tr><th align="left">Task</th><th align="left">Model</th><th align="center">Tier</th><th align="left">Reason</th></tr>
+</thead>
+<tbody>
+<tr>
+<td>Job scoring</td><td><code>gpt-5.4-mini</code></td>
+<td align="center" bgcolor="#0a1e0a">![](https://img.shields.io/badge/nano-16a34a?style=flat-square)</td>
+<td>Runs on every job — cost is the only constraint</td>
+</tr>
+<tr>
+<td>Skill extraction (gap)</td><td><code>gpt-5.4-mini</code></td>
+<td align="center" bgcolor="#0a1e0a">![](https://img.shields.io/badge/nano-16a34a?style=flat-square)</td>
+<td>Batch across 200+ JDs</td>
+</tr>
+<tr>
+<td>Company intel synthesis</td><td><code>gpt-5.4-mini</code></td>
+<td align="center" bgcolor="#0a1e0a">![](https://img.shields.io/badge/nano-16a34a?style=flat-square)</td>
+<td>Noisy scraped data needs reasoning</td>
+</tr>
+<tr>
+<td>Market intel extraction</td><td><code>gpt-5.4-mini</code></td>
+<td align="center" bgcolor="#0a1e0a">![](https://img.shields.io/badge/nano-16a34a?style=flat-square)</td>
+<td>Structured JSON from news snippets</td>
+</tr>
+<tr>
+<td>Cold message drafting</td><td><code>gpt-5.4-mini</code></td>
+<td align="center" bgcolor="#0a1e0a">![](https://img.shields.io/badge/nano-16a34a?style=flat-square)</td>
+<td>Prompt-driven quality; gpt-5 caused silent empty outputs</td>
+</tr>
+<tr>
+<td>Persona builder</td><td><code>gpt-5</code></td>
+<td align="center" bgcolor="#0d1530">![](https://img.shields.io/badge/quality-3b82f6?style=flat-square)</td>
+<td>Conversational depth matters</td>
+</tr>
+<tr>
+<td>Cover letter</td><td><code>claude-haiku-4-5</code></td>
+<td align="center" bgcolor="#1a1000">![](https://img.shields.io/badge/claude-d97706?style=flat-square)</td>
+<td>Good writing, cost-efficient</td>
+</tr>
+<tr>
+<td>Resume bullets (LaTeX)</td><td><code>claude-sonnet-4-6</code></td>
+<td align="center" bgcolor="#1a1000">![](https://img.shields.io/badge/claude-d97706?style=flat-square)</td>
+<td>LaTeX-aware, highest precision</td>
+</tr>
+</tbody>
+</table>
 
 All model names live in `config.py` only — changing any model is a one-line edit.
 
@@ -508,35 +574,50 @@ All model names live in `config.py` only — changing any model is a one-line ed
 
 <br/>
 
-| | Feature | Status |
-|:--|---|:--:|
-| 🟢 | Multi-source keyword discovery (Indeed + LinkedIn, 10 search terms) | Done |
-| 🟢 | Two-pass scoring — rule-based pre-filter + parallel LLM (×8 workers) | Done |
-| 🟢 | Ground-truth company tier lookup (70 companies, verified) | Done |
-| 🟢 | Profile-driven seniority + experience band gating | Done |
-| 🟢 | Parent-company dedup (`Amazon.com` + `Amazon Science` = 1 diversity slot) | Done |
-| 🟢 | Watchlist agent — Greenhouse / Lever / LinkedIn `f_C=` | Done |
-| 🟢 | LinkedIn company ID resolver with persistent disk cache | Done |
-| 🟢 | Company intel agent — Tavily + Wikipedia + 7-day cache | Done |
-| 🟢 | SQLite dedup — skip rescoring jobs seen in previous runs | Done |
-| 🟢 | Master orchestrator — `run_dossier.py` | Done |
-| 🟢 | Market intel agent — funding news → company discovery → routing | Done |
-| 🟢 | Gap analysis agent — semantic extraction across 193 JDs | Done |
-| 🟢 | Resume agent — 3-pass self-evaluation (tailor → critique → revise) | Done |
-| 🟢 | Referral finder — 3-tier contact search + personalised cold messages | Done |
-| 🔨 | **Cold outreach generator** — structured send queue, follow-up tracking | Next |
-| 📋 | Telegram alerts — URGENT jobs pushed within minutes of posting | Planned |
-| 🔮 | LTR scorer — trained on apply/response signal after 200+ labels | Future |
+<table>
+<thead><tr><th align="left">Feature</th><th align="center">Status</th></tr></thead>
+<tbody>
+<tr><td>Multi-source keyword discovery (Indeed + LinkedIn, 10 search terms)</td><td align="center" bgcolor="#08180a">![](https://img.shields.io/badge/-Done-22c55e?style=flat-square)</td></tr>
+<tr><td>Two-pass scoring — rule-based pre-filter + parallel LLM (×8 workers)</td><td align="center" bgcolor="#08180a">![](https://img.shields.io/badge/-Done-22c55e?style=flat-square)</td></tr>
+<tr><td>Ground-truth company tier lookup (70 companies, verified)</td><td align="center" bgcolor="#08180a">![](https://img.shields.io/badge/-Done-22c55e?style=flat-square)</td></tr>
+<tr><td>Profile-driven seniority + experience band gating</td><td align="center" bgcolor="#08180a">![](https://img.shields.io/badge/-Done-22c55e?style=flat-square)</td></tr>
+<tr><td>Parent-company dedup (<code>Amazon.com</code> + <code>Amazon Science</code> = 1 diversity slot)</td><td align="center" bgcolor="#08180a">![](https://img.shields.io/badge/-Done-22c55e?style=flat-square)</td></tr>
+<tr><td>Watchlist agent — Greenhouse / Lever / LinkedIn <code>f_C=</code></td><td align="center" bgcolor="#08180a">![](https://img.shields.io/badge/-Done-22c55e?style=flat-square)</td></tr>
+<tr><td>LinkedIn company ID resolver with persistent disk cache</td><td align="center" bgcolor="#08180a">![](https://img.shields.io/badge/-Done-22c55e?style=flat-square)</td></tr>
+<tr><td>Company intel agent — Tavily + Wikipedia + 7-day cache</td><td align="center" bgcolor="#08180a">![](https://img.shields.io/badge/-Done-22c55e?style=flat-square)</td></tr>
+<tr><td>SQLite dedup — skip rescoring jobs seen in previous runs</td><td align="center" bgcolor="#08180a">![](https://img.shields.io/badge/-Done-22c55e?style=flat-square)</td></tr>
+<tr><td>Master orchestrator — <code>run_dossier.py</code></td><td align="center" bgcolor="#08180a">![](https://img.shields.io/badge/-Done-22c55e?style=flat-square)</td></tr>
+<tr><td>Market intel agent — funding news → company discovery → routing</td><td align="center" bgcolor="#08180a">![](https://img.shields.io/badge/-Done-22c55e?style=flat-square)</td></tr>
+<tr><td>Gap analysis agent — semantic extraction across 193 JDs</td><td align="center" bgcolor="#08180a">![](https://img.shields.io/badge/-Done-22c55e?style=flat-square)</td></tr>
+<tr><td>Resume agent — 3-pass self-evaluation (tailor → critique → revise)</td><td align="center" bgcolor="#08180a">![](https://img.shields.io/badge/-Done-22c55e?style=flat-square)</td></tr>
+<tr><td>Referral finder — 3-tier contact search + personalised cold messages</td><td align="center" bgcolor="#08180a">![](https://img.shields.io/badge/-Done-22c55e?style=flat-square)</td></tr>
+<tr><td><strong>Cold outreach generator</strong> — structured send queue, follow-up tracking</td><td align="center" bgcolor="#1a1200">![](https://img.shields.io/badge/-Next-f59e0b?style=flat-square)</td></tr>
+<tr><td>Telegram alerts — URGENT jobs pushed within minutes of posting</td><td align="center" bgcolor="#0d1530">![](https://img.shields.io/badge/-Planned-6366f1?style=flat-square)</td></tr>
+<tr><td>LTR scorer — trained on apply/response signal after 200+ labels</td><td align="center" bgcolor="#14101e">![](https://img.shields.io/badge/-Future-6b7280?style=flat-square)</td></tr>
+</tbody>
+</table>
 
 <br/>
 
 **Product tiers:**
 
-| Tier | What you get |
-|---|---|
-| **Dossier Lite** | Keyword discovery · Indeed + LinkedIn · LLM scoring |
-| **Dossier Pro** | + Watchlist (70 companies) · company intel · orchestrator |
-| **Dossier Max** | + Market intel · gap analysis · referral finder · resume agent |
+<table>
+<thead><tr><th align="left">Tier</th><th align="left">What you get</th></tr></thead>
+<tbody>
+<tr>
+<td bgcolor="#0d1530">![](https://img.shields.io/badge/Dossier_Lite-3b82f6?style=flat-square)</td>
+<td bgcolor="#0d1530">Keyword discovery · Indeed + LinkedIn · LLM scoring</td>
+</tr>
+<tr>
+<td bgcolor="#130c26">![](https://img.shields.io/badge/Dossier_Pro-8b5cf6?style=flat-square)</td>
+<td bgcolor="#130c26">+ Watchlist (70 companies) · company intel · orchestrator</td>
+</tr>
+<tr>
+<td bgcolor="#1a1000">![](https://img.shields.io/badge/Dossier_Max-d97706?style=flat-square)</td>
+<td bgcolor="#1a1000">+ Market intel · gap analysis · referral finder · resume agent</td>
+</tr>
+</tbody>
+</table>
 
 Lite and Pro are ✅ built. Max is ✅ feature-complete — gap analysis + resume agent + referral finder all done. Cold outreach queue is next.
 
