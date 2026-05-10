@@ -274,47 +274,7 @@ uv run python tests/test_llm_client.py
 
 ## ✦ How it works
 
-```mermaid
-flowchart TD
-    P[profile.json\nsource of truth] --> D & W
-
-    subgraph D[" Stage 1 · Job Discovery "]
-        D1[Indeed + LinkedIn\n10 search terms] --> D2[Rule-based pre-filter\n~60% eliminated free]
-        D2 --> D3[LLM Scoring ×8\ngpt-5.4-mini]
-    end
-
-    subgraph W[" Stage 2 · Watchlist "]
-        W1[70 target companies\nGreenhouse · Lever · LinkedIn] --> W2[ML title filter\n+ pre-filter]
-        W2 --> W3[LLM Scoring ×8\ngpt-5.4-mini]
-    end
-
-    D3 & W3 --> DB[(SQLite\ndedup)]
-    DB --> I
-
-    subgraph I[" Stage 3 · Company Intel "]
-        I1{score ≥ 7?} -->|yes| I2[Tavily ×2\n+ Wikipedia]
-        I2 --> I3[intel.json\nfunding · headcount · risk]
-        I1 -->|no| I4[skip]
-    end
-
-    I3 --> V[data/artifacts/job_id/\njd.txt · scorecard · intel]
-
-    subgraph G[" Stage 4 · Gap Analysis  run once, then incremental "]
-        G1[LLM extracts skills\nfrom all JDs × 8 workers] --> G2[semantic match\nvs profile aliases]
-        G2 --> G3[gap.json per job\nhas / missing split]
-    end
-
-    V --> G
-
-    subgraph R[" Stage 5 · Resume Agent  per job "]
-        R1[Pass 1 — Tailor\nclaude-sonnet-4-6] --> R2[Pass 2 — Critique\nclaude-haiku-4-5]
-        R2 -->|issues found| R3[Pass 3 — Revise\nclaude-sonnet-4-6]
-        R2 -->|no issues| R4[use Pass 1 directly]
-    end
-
-    G3 --> R
-    R3 & R4 --> OUT[resume.tex · resume.pdf\ncover_letter.txt]
-```
+<img src=".github/assets/architecture.svg" alt="Dossier system architecture" width="900"/>
 
 <br/>
 

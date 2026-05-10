@@ -1,0 +1,123 @@
+<svg viewBox="0 0 900 730" xmlns="http://www.w3.org/2000/svg" width="900" height="730">
+
+  <!-- Background -->
+  <rect width="900" height="730" fill="#0d1117" rx="14"/>
+  <rect x="1" y="1" width="898" height="728" rx="13" fill="none" stroke="#1a2332" stroke-width="1"/>
+
+  <!-- ── PROFILE.JSON ── -->
+  <rect x="28" y="18" width="844" height="52" rx="6" fill="#161b22" stroke="#3b82f6" stroke-width="1"/>
+  <rect x="28" y="18" width="3" height="52" rx="2" fill="#3b82f6"/>
+  <text x="46" y="37" font-family="'Courier New', Courier, monospace" font-size="12" font-weight="700" fill="#e8f4ff">profile/profile.json</text>
+  <text x="204" y="37" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="10" fill="#4b6a8a">  —  single source of truth  ·  all agents read at runtime  ·  zero hardcoded values</text>
+  <text x="46" y="57" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="9" fill="#374e6a">name  ·  target_roles  ·  skills[depth: can_teach / can_architect / can_use]  ·  search_terms  ·  watchlist  ·  exp_band  ·  salary_floor  ·  location  ·  known_gaps</text>
+
+  <!-- Arrows: Profile → Discovery and Watchlist -->
+  <line x1="232" y1="70" x2="232" y2="84" stroke="#2d3748" stroke-width="1.5"/>
+  <polygon points="228,84 236,84 232,92" fill="#2d3748"/>
+  <line x1="668" y1="70" x2="668" y2="84" stroke="#2d3748" stroke-width="1.5"/>
+  <polygon points="664,84 672,84 668,92" fill="#2d3748"/>
+
+  <!-- ── STAGE 1: JOB DISCOVERY ── -->
+  <rect x="28" y="92" width="408" height="162" rx="6" fill="#161b22" stroke="#3b82f6" stroke-width="1"/>
+  <rect x="28" y="92" width="3" height="162" rx="2" fill="#3b82f6"/>
+  <text x="46" y="107" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="9" font-weight="700" fill="#3b82f6" letter-spacing="1.5">STAGE 1  ·  JOB DISCOVERY</text>
+  <text x="46" y="123" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11" fill="#cbd5e1">Indeed  ·  LinkedIn</text>
+  <text x="46" y="138" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="10" fill="#94a3b8">10 profile-driven search terms</text>
+  <text x="46" y="152" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="10" fill="#94a3b8">Rule-based pre-filter  ·  ~60% eliminated free</text>
+  <text x="46" y="166" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="10" fill="#94a3b8">LLM scoring  x8 parallel workers</text>
+  <text x="46" y="182" font-family="'Courier New', Courier, monospace" font-size="9" fill="#374e6a">~550 raw  ->  ~220 scored  ->  ~57 ranked (~31 high)</text>
+  <text x="46" y="200" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="9" fill="#4b5563">~2 min  ·  $0.04/run  ·  gpt-5.4-mini  ·  8 workers</text>
+  <text x="46" y="214" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="9" fill="#374e6a">is_hard_no()  seniority_mismatch()  exp_band()  degree_check()  dedup(url)</text>
+
+  <!-- ── STAGE 2: WATCHLIST ── -->
+  <rect x="464" y="92" width="408" height="162" rx="6" fill="#161b22" stroke="#a78bfa" stroke-width="1"/>
+  <rect x="464" y="92" width="3" height="162" rx="2" fill="#a78bfa"/>
+  <text x="482" y="107" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="9" font-weight="700" fill="#a78bfa" letter-spacing="1.5">STAGE 2  ·  WATCHLIST AGENT</text>
+  <text x="482" y="123" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11" fill="#cbd5e1">70 hand-picked companies</text>
+  <text x="482" y="138" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="10" fill="#94a3b8">Greenhouse  ·  Lever  ·  LinkedIn f_C=</text>
+  <text x="482" y="152" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="10" fill="#94a3b8">ML title filter  +  pre-filter</text>
+  <text x="482" y="166" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="10" fill="#94a3b8">LLM scoring  x8 parallel workers</text>
+  <text x="482" y="182" font-family="'Courier New', Courier, monospace" font-size="9" fill="#374e6a">70 cos  ->  ~40 raw  ->  ~10 scored (~6 high)</text>
+  <text x="482" y="200" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="9" fill="#4b5563">~3 min  ·  $0.01/run  ·  4 fetch strategies  ·  ID cache</text>
+  <text x="482" y="214" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="9" fill="#374e6a">slug -> HTML extract -> numeric ID -> cache: linkedin_company_ids.json</text>
+
+  <!-- Arrows: Discovery + Watchlist → SQLite -->
+  <line x1="232" y1="254" x2="232" y2="272" stroke="#2d3748" stroke-width="1.5"/>
+  <polygon points="228,272 236,272 232,280" fill="#2d3748"/>
+  <line x1="668" y1="254" x2="668" y2="272" stroke="#2d3748" stroke-width="1.5"/>
+  <polygon points="664,272 672,272 668,280" fill="#2d3748"/>
+
+  <!-- ── SQLITE DEDUP ── -->
+  <rect x="130" y="280" width="640" height="40" rx="6" fill="#161b22" stroke="#4b5563" stroke-width="1"/>
+  <rect x="130" y="280" width="3" height="40" rx="2" fill="#4b5563"/>
+  <text x="148" y="296" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="9" font-weight="700" fill="#6b7280" letter-spacing="1.5">SQLite  ·  URL DEDUP  ·  dossier.db</text>
+  <text x="148" y="311" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="9" fill="#4b5563">skip if seen this run or ever  ·  deduplicates across both sources  ·  persists across runs  ·  marks for future</text>
+
+  <!-- Arrows: SQLite → CompanyIntel -->
+  <line x1="232" y1="320" x2="232" y2="340" stroke="#2d3748" stroke-width="1.5"/>
+  <polygon points="228,340 236,340 232,348" fill="#2d3748"/>
+
+  <!-- ── STAGE 3: COMPANY INTEL ── -->
+  <rect x="28" y="348" width="408" height="118" rx="6" fill="#161b22" stroke="#fbbf24" stroke-width="1"/>
+  <rect x="28" y="348" width="3" height="118" rx="2" fill="#fbbf24"/>
+  <text x="46" y="363" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="9" font-weight="700" fill="#fbbf24" letter-spacing="1.5">STAGE 3  ·  COMPANY INTEL</text>
+  <text x="46" y="378" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11" fill="#cbd5e1">Trigger: score &gt;= 7 / 10</text>
+  <text x="46" y="392" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="10" fill="#94a3b8">Tavily x2  +  Wikipedia</text>
+  <text x="46" y="406" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="10" fill="#94a3b8">7-day company-level cache  ·  ~70% hit rate in steady state</text>
+  <text x="46" y="420" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="10" fill="#94a3b8">funding  ·  headcount  ·  ML focus  ·  risk flags  ->  intel.json</text>
+  <text x="46" y="440" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="9" fill="#4b5563">$0.02/job  ·  gpt-5.4-mini  ·  intel_cache/ (per-company TTL)</text>
+
+  <!-- ── MARKET INTEL (dashed = independent/periodic) ── -->
+  <rect x="464" y="348" width="408" height="118" rx="6" fill="#161b22" stroke="#fb923c" stroke-width="1" stroke-dasharray="6,3"/>
+  <rect x="464" y="348" width="3" height="118" rx="2" fill="#fb923c"/>
+  <text x="482" y="363" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="9" font-weight="700" fill="#fb923c" letter-spacing="1.5">MARKET INTEL  ·  WEEKLY  ·  INDEPENDENT</text>
+  <text x="482" y="378" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11" fill="#cbd5e1">YourStory  ·  Inc42  ·  TechCrunch</text>
+  <text x="482" y="392" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="10" fill="#94a3b8">funding round detection</text>
+  <text x="482" y="406" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="10" fill="#94a3b8">company discovery  ->  routing decision</text>
+  <text x="482" y="420" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="10" fill="#94a3b8">adds companies to watchlist on next run</text>
+  <text x="482" y="440" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="9" fill="#4b5563">gpt-5.4-mini  ·  market_intel_queue.json  (audit trail)</text>
+
+  <!-- Market Intel feedback arrow → Watchlist (dashed, right side loop) -->
+  <path d="M 872 407 L 888 407 L 888 173 L 872 173" stroke="#fb923c" stroke-width="1.2" stroke-dasharray="4,3" fill="none"/>
+  <polygon points="880,169 880,177 872,173" fill="#fb923c"/>
+
+  <!-- Arrow: CompanyIntel → GapAnalysis -->
+  <line x1="232" y1="466" x2="232" y2="486" stroke="#2d3748" stroke-width="1.5"/>
+  <polygon points="228,486 236,486 232,494" fill="#2d3748"/>
+
+  <!-- ── STAGE 4: GAP ANALYSIS ── -->
+  <rect x="28" y="494" width="844" height="92" rx="6" fill="#161b22" stroke="#34d399" stroke-width="1"/>
+  <rect x="28" y="494" width="3" height="92" rx="2" fill="#34d399"/>
+  <text x="46" y="509" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="9" font-weight="700" fill="#34d399" letter-spacing="1.5">STAGE 4  ·  GAP ANALYSIS</text>
+  <text x="46" y="524" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11" fill="#cbd5e1">193 JDs processed  ·  LLM extraction x8 workers  ·  semantic reasoning — not keyword matching</text>
+  <text x="46" y="538" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="10" fill="#94a3b8">6 categories: technical  ·  tools_platforms  ·  domain  ·  research_methods  ·  behavioral  ·  certifications</text>
+  <text x="46" y="552" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="10" fill="#94a3b8">gap.json per job: candidate_has_required  ·  candidate_missing_required  ->  gap_report.json aggregate</text>
+  <text x="46" y="570" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="9" fill="#4b5563">$0.73 one-time  ·  incremental after  ·  192/193 JDs complete  ·  gpt-5.4-mini</text>
+
+  <!-- Arrows: GapAnalysis → ResumeAgent and Referral -->
+  <line x1="232" y1="586" x2="232" y2="606" stroke="#2d3748" stroke-width="1.5"/>
+  <polygon points="228,606 236,606 232,614" fill="#2d3748"/>
+  <line x1="668" y1="586" x2="668" y2="606" stroke="#2d3748" stroke-width="1.5"/>
+  <polygon points="664,606 672,606 668,614" fill="#2d3748"/>
+
+  <!-- ── STAGE 5: RESUME AGENT ── -->
+  <rect x="28" y="614" width="408" height="106" rx="6" fill="#161b22" stroke="#f472b6" stroke-width="1"/>
+  <rect x="28" y="614" width="3" height="106" rx="2" fill="#f472b6"/>
+  <text x="46" y="629" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="9" font-weight="700" fill="#f472b6" letter-spacing="1.5">STAGE 5  ·  RESUME AGENT</text>
+  <text x="46" y="644" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11" fill="#cbd5e1">Pass 1 — Sonnet: tailor bullets, mirror JD keywords, ATS-first ordering</text>
+  <text x="46" y="658" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="10" fill="#94a3b8">Pass 2 — Haiku: keyword  ·  hallucination  ·  LaTeX  ·  ordering audit</text>
+  <text x="46" y="672" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="10" fill="#94a3b8">Pass 3 — Sonnet: surgical fix on flagged issues only</text>
+  <text x="46" y="686" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="10" fill="#94a3b8">resume.tex  ·  resume.pdf  ·  cover_letter.txt  (250-320 words)</text>
+  <text x="46" y="704" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="9" fill="#4b5563">$0.08–0.14/job  ·  claude-sonnet-4-6  +  claude-haiku-4-5</text>
+
+  <!-- ── REFERRAL FINDER ── -->
+  <rect x="464" y="614" width="408" height="106" rx="6" fill="#161b22" stroke="#2dd4bf" stroke-width="1"/>
+  <rect x="464" y="614" width="3" height="106" rx="2" fill="#2dd4bf"/>
+  <text x="482" y="629" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="9" font-weight="700" fill="#2dd4bf" letter-spacing="1.5">REFERRAL FINDER</text>
+  <text x="482" y="644" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11" fill="#cbd5e1">Tier 1 — warm LinkedIn connections</text>
+  <text x="482" y="658" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="10" fill="#94a3b8">Tier 2 — cold Tavily contact search</text>
+  <text x="482" y="672" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="10" fill="#94a3b8">Tier 3 — LLM personalised cold message per contact</text>
+  <text x="482" y="686" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="10" fill="#94a3b8">referrals.json  ·  confidence-scored  ·  seniority-aware</text>
+  <text x="482" y="704" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="9" fill="#4b5563">gpt-5.4-mini  ·  warm -> cold -> LLM fallback chain</text>
+
+</svg>
