@@ -12,6 +12,11 @@ A singleton means only ONE instance of this class ever exists in the program's l
     1. .env is read once — not on every import
     2. All agents see the exact same config values with zero risk of inconsistency
     3. If a required key is missing, you get ONE clear error at startup, not buried later
+
+MULTI-USER:
+- Pass Config(user="anushthan") on first call (at entry point) to scope paths to that user
+- All downstream Config() calls return the same singleton — agents need no changes
+- Default user is "me" (matches profile/me/ directory with Shivang's files)
 """
 
 import os
@@ -22,16 +27,16 @@ from dotenv import load_dotenv
 class Config:
     _instance = None  # Stores the one shared instance across the entire program
 
-    def __new__(cls):
+    def __new__(cls, user: str = "shivang"):
         # __new__ is called before __init__ every time someone writes Config().
         # We intercept here: if no instance exists yet, create one and load .env.
-        # If one already exists, return it — nothing is re-read.
+        # If one already exists, return it — nothing is re-read, user arg is ignored.
         if cls._instance is None:
             cls._instance = super().__new__(cls)
-            cls._instance._load()
+            cls._instance._load(user)
         return cls._instance
 
-    def _load(self) -> None:
+    def _load(self, user: str) -> None:
         # Reads the .env file from the project root into os.environ
         load_dotenv()
 
@@ -39,12 +44,12 @@ class Config:
         self.openai_api_key: str = self._require("OPENAI_API_KEY")
         self.anthropic_api_key: str = self._require("ANTHROPIC_API_KEY")
 
-        # --- Job API keys: optional now, required when Step 2 is built ---
+        # --- Job API keys ---
         self.jsearch_api_key: str = self._optional_warn("JSEARCH_API_KEY")
         self.adzuna_app_id: str = os.getenv("ADZUNA_APP_ID", "")
         self.adzuna_app_key: str = os.getenv("ADZUNA_APP_KEY", "")
 
-        # --- Telegram: optional now, required when Step 2 notifications are built ---
+        # --- Telegram ---
         self.telegram_bot_token: str = os.getenv("TELEGRAM_BOT_TOKEN", "")
         self.telegram_chat_id: str = os.getenv("TELEGRAM_CHAT_ID", "")
 
@@ -68,10 +73,10 @@ class Config:
         #
         # VERIFIED 2026-05-02 via tests/test_llm_client.py:
         #   gpt-5-nano     → BROKEN: returns empty string (not yet stable for our use)
-        #   gpt-5.4-mini   → PASS plain text + JSON ✓ — cheapest working model
+        #   gpt-5.4-mini   → PASS plain text + JSON — cheapest working model
         #   gpt-5          → PASS plain text only, FAIL JSON — use for non-structured tasks only
-        #   claude-haiku   → PASS plain text + JSON ✓
-        #   claude-sonnet  → PASS plain text + JSON ✓
+        #   claude-haiku   → PASS plain text + JSON
+        #   claude-sonnet  → PASS plain text + JSON
         #
         # Tasks that need JSON output (scoring, extraction): use gpt-5.4-mini or claude
         # Tasks that produce plain text (messages, persona interview): can use gpt-5
@@ -81,13 +86,28 @@ class Config:
         self.model_resume: str = "claude-sonnet-4-6"        # Resume bullet rewriting + LaTeX (Claude only)
         self.model_cover: str = "claude-haiku-4-5-20251001" # Cover letter generation
 
-        # --- File paths (all via pathlib — never string concatenation) ---
-        self.profile_dir: Path = Path("profile")
-        self.profile_path: Path = Path(os.getenv("PROFILE_PATH", "profile/profile.json"))
-        self.data_dir: Path = Path("data")
+        # --- Deprecate PROFILE_PATH env var ---
+        # PROFILE_PATH was the old single-user approach. The new approach uses --user flag.
+        if os.getenv("PROFILE_PATH"):
+            print(
+                "[Config] Warning: PROFILE_PATH env var is deprecated. "
+                "Use --user flag instead. Ignoring PROFILE_PATH."
+            )
+
+        # --- Per-user paths: all scoped under profile/{user}/ and data/{user}/ ---
+        # Every agent reads from these — changing user at startup isolates everything.
+        self.user: str = user
+        self.profile_dir: Path = Path("profile") / user
+        self.profile_path: Path = Path("profile") / user / "profile.json"
+        self.data_dir: Path = Path("data") / user
         self.artifacts_dir: Path = self.data_dir / "artifacts"
         self.db_path: Path = self.data_dir / "dossier.db"
+
+        # --- Shared paths (same for all users — not scoped by user) ---
         self.prompts_dir: Path = Path("prompts")
+        self.target_companies_path: Path = Path("profile") / "target_companies.json"
+        self.exception_companies_path: Path = Path("profile") / "exception_companies.json"
+        self.linkedin_id_cache_path: Path = Path("data") / "linkedin_company_ids.json"
 
     def _require(self, key: str) -> str:
         # Reads a required env var. Raises immediately with a clear message if missing.

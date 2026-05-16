@@ -23,8 +23,6 @@ from pathlib import Path
 
 from rich.console import Console
 
-from agents.company_intel import print_intel_summary, run
-
 console = Console()
 
 
@@ -45,6 +43,10 @@ def main() -> None:
         description="Run company intel agent on recent high-scoring jobs."
     )
     parser.add_argument(
+        "--user", type=str, default="shivang",
+        help="Run for this user. Reads from profile/{user}/, writes to data/{user}/. (default: shivang)",
+    )
+    parser.add_argument(
         "--min-score", type=int, default=7,
         help="Minimum job score to research (default: 7)",
     )
@@ -53,6 +55,11 @@ def main() -> None:
         help="Which last-run file(s) to read from (default: both)",
     )
     args = parser.parse_args()
+
+    from config import Config
+    Config(user=args.user)
+
+    from agents.company_intel import print_intel_summary, run
 
     console.print("\n[bold]Dossier — Company Intel Agent[/bold]")
     console.print("━" * 50)

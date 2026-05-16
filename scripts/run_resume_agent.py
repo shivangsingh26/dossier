@@ -31,13 +31,6 @@ from pathlib import Path
 # Add project root to path so imports work from any directory
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from config import Config
-from agents.resume_agent import tailor_resume, generate_cover_letter
-from core.llm_client import LLMClient
-from core.logger import get_logger
-
-logger = get_logger(__name__)
-
 
 def _next_version_filenames(artifact_dir: Path) -> tuple[str, str]:
     """
@@ -191,6 +184,12 @@ def run(job_id: str, use_version: bool = False) -> None:
     Run tailor_resume + generate_cover_letter + PDF compilation for the given job_id.
     If use_version=True, saves to resume_v{N}.tex instead of overwriting resume.tex.
     """
+    from config import Config
+    from agents.resume_agent import tailor_resume, generate_cover_letter
+    from core.llm_client import LLMClient
+    from core.logger import get_logger
+    logger = get_logger(__name__)
+
     config = Config()
     artifact_dir = config.artifacts_dir / job_id
 
@@ -274,7 +273,14 @@ def main() -> None:
             "Finds the next unused number: resume_v2.tex, resume_v3.tex, etc."
         ),
     )
+    parser.add_argument(
+        "--user", type=str, default="shivang",
+        help="Run for this user. Reads from profile/{user}/, writes to data/{user}/. (default: shivang)",
+    )
     args = parser.parse_args()
+
+    from config import Config
+    Config(user=args.user)
 
     config = Config()
 

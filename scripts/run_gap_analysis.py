@@ -23,18 +23,16 @@ from pathlib import Path
 # Allow running from project root: python scripts/run_gap_analysis.py
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from config import Config
-from core.logger import get_logger, setup_logging
-from agents.gap_analysis import run as run_gap_analysis
-
-logger = get_logger(__name__)
-
 
 def main() -> None:
     """Parse CLI args and run the gap analysis pipeline."""
     parser = argparse.ArgumentParser(
         description="Dossier Gap Analysis — extract skills from all JDs and report gaps vs profile.",
         formatter_class=argparse.RawTextHelpFormatter,
+    )
+    parser.add_argument(
+        "--user", type=str, default="shivang",
+        help="Run for this user. Reads from profile/{user}/, writes to data/{user}/. (default: shivang)",
     )
     parser.add_argument(
         "--force",
@@ -58,6 +56,14 @@ def main() -> None:
         help="Number of skills to show per section in the terminal report. (default: 20)",
     )
     args = parser.parse_args()
+
+    from config import Config
+    Config(user=args.user)
+
+    from core.logger import get_logger, setup_logging
+    from agents.gap_analysis import run as run_gap_analysis
+
+    logger = get_logger(__name__)
 
     config = Config()
     setup_logging(config.log_level)

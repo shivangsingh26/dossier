@@ -17,13 +17,15 @@ from pathlib import Path
 # Add project root to sys.path so imports work when run from any directory
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from agents.watchlist_agent import run
-
 
 def main() -> None:
     """Parse CLI flags and run the watchlist agent."""
     parser = argparse.ArgumentParser(
         description="Dossier watchlist agent — searches target companies directly"
+    )
+    parser.add_argument(
+        "--user", type=str, default="shivang",
+        help="Run for this user. Reads from profile/{user}/, writes to data/{user}/. (default: shivang)",
     )
     parser.add_argument(
         "--min-score",
@@ -39,6 +41,11 @@ def main() -> None:
     )
 
     args = parser.parse_args()
+
+    from config import Config
+    Config(user=args.user)
+
+    from agents.watchlist_agent import run
     run(min_score=args.min_score, location=args.location)
 
 

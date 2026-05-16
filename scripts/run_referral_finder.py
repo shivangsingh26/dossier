@@ -33,13 +33,6 @@ from pathlib import Path
 # Add project root to path so imports work from any directory
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from config import Config
-from agents.referral_finder import run_referral_finder
-from core.llm_client import LLMClient
-from core.logger import get_logger
-
-logger = get_logger(__name__)
-
 
 def list_available_jobs(artifacts_dir: Path) -> None:
     """Print all jobs that have intel.json ready, sorted by score descending."""
@@ -139,6 +132,12 @@ def _print_referrals(referrals: list[dict], job_id: str) -> None:
 
 def run(job_id: str, no_csv: bool = False) -> None:
     """Run the full referral finder pipeline for a given job_id."""
+    from config import Config
+    from agents.referral_finder import run_referral_finder
+    from core.llm_client import LLMClient
+    from core.logger import get_logger
+    logger = get_logger(__name__)
+
     config = Config()
     artifact_dir = config.artifacts_dir / job_id
 
@@ -219,7 +218,14 @@ def main() -> None:
             "Useful before you have exported your connections, or to re-run cold search alone."
         ),
     )
+    parser.add_argument(
+        "--user", type=str, default="shivang",
+        help="Run for this user. Reads from profile/{user}/, writes to data/{user}/. (default: shivang)",
+    )
     args = parser.parse_args()
+
+    from config import Config
+    Config(user=args.user)
 
     config = Config()
 

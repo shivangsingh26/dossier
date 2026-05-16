@@ -51,9 +51,6 @@ _MODES = {
     "market-intel":  "Market Intel only — discover new AI/ML startups from funding news",
 }
 
-_DATA_DIR = Path("data")
-
-
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
 def load_last_run(path: Path) -> list[dict]:
@@ -90,9 +87,9 @@ def print_run_header(args: argparse.Namespace) -> None:
     console.print()
 
 
-def save_run_summary(summary: dict) -> None:
-    """Persist run metadata to data/last_orchestrator_run.json."""
-    path = _DATA_DIR / "last_orchestrator_run.json"
+def save_run_summary(summary: dict, data_dir: Path) -> None:
+    """Persist run metadata to data/{user}/last_orchestrator_run.json."""
+    path = data_dir / "last_orchestrator_run.json"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8")
 
@@ -145,7 +142,17 @@ def main() -> None:
             "Uses ~5 Tavily credits per job. Off by default."
         ),
     )
+    parser.add_argument(
+        "--user", type=str, default="shivang",
+        help="Run for this user. Reads from profile/{user}/, writes to data/{user}/. (default: shivang)",
+    )
     args = parser.parse_args()
+
+    from config import Config
+    Config(user=args.user)
+    config      = Config()
+    data_dir    = config.data_dir
+    artifacts_dir = config.artifacts_dir
 
     # urgent mode always collapses to 24h regardless of --hours
     if args.mode == "urgent":
@@ -225,7 +232,7 @@ def main() -> None:
             console.print(f"\n  [red]✗ Discovery failed:[/red] {exc}")
             console.print("  [dim]Falling back to last-run file for downstream stages...[/dim]")
             summary["stage_errors"].append(f"discovery: {exc}")
-            discovery_jobs = load_last_run(_DATA_DIR / "last_discovery_run.json")
+            discovery_jobs = load_last_run(data_dir / "last_discovery_run.json")
 
     # ── Stage 2: Watchlist ────────────────────────────────────────────────────
     if run_watchlist:
@@ -247,7 +254,7 @@ def main() -> None:
             console.print(f"\n  [red]✗ Watchlist failed:[/red] {exc}")
             console.print("  [dim]Falling back to last-run file for company intel stage...[/dim]")
             summary["stage_errors"].append(f"watchlist: {exc}")
-            watchlist_jobs = load_last_run(_DATA_DIR / "last_watchlist_run.json")
+            watchlist_jobs = load_last_run(data_dir / "last_watchlist_run.json")
 
     # ── Stage 3: Company Intel ────────────────────────────────────────────────
     if run_company_intel:
@@ -262,8 +269,8 @@ def main() -> None:
 
             # company-intel mode: load results from last run since stages 1 & 2 were skipped
             if args.mode == "company-intel":
-                discovery_jobs = load_last_run(_DATA_DIR / "last_discovery_run.json")
-                watchlist_jobs = load_last_run(_DATA_DIR / "last_watchlist_run.json")
+                discovery_jobs = load_last_run(data_dir / "last_discovery_run.json")
+                watchlist_jobs = load_last_run(data_dir / "last_watchlist_run.json")
                 total_loaded   = len(discovery_jobs) + len(watchlist_jobs)
                 if total_loaded == 0:
                     console.print(
@@ -321,7 +328,7 @@ def main() -> None:
         target_jobs = [
             j for j in all_jobs
             if j.get("score", 0) >= args.company_intel_score
-            and not (Path("data/artifacts") / j["job_id"] / "referrals.json").exists()
+            and not (artifacts_dir / j["job_id"] / "referrals.json").exists()
         ]
         print_stage_banner(
             "Stage 5 — Referral Finder",
@@ -376,7 +383,7 @@ def main() -> None:
             console.print(f"    [yellow]• {err}[/yellow]")
 
     console.print()
-    save_run_summary(summary)
+    save_run_summary(summary, data_dir)
     console.print(f"  Run metadata → data/last_orchestrator_run.json\n")
 
 

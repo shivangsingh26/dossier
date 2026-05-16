@@ -18,10 +18,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from agents.job_discovery import run
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Dossier job discovery agent")
+    parser.add_argument(
+        "--user", type=str, default="shivang",
+        help="Run for this user. Reads from profile/{user}/, writes to data/{user}/. (default: shivang)",
+    )
     parser.add_argument(
         "--hours", type=int, default=72,
         help="Only fetch jobs posted in the last N hours (default: 72)"
@@ -32,4 +34,8 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
+    from config import Config
+    Config(user=args.user)
+
+    from agents.job_discovery import run
     run(hours_old=args.hours, min_score=args.min_score)
