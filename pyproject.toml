@@ -46,6 +46,8 @@ dependencies = [
     # python-jobspy: scrapes LinkedIn, Indeed, Naukri, Google Jobs, Glassdoor in one call
     # No API key needed. hours_old parameter filters for fresh listings only.
     "python-jobspy>=1.1.82",
+    "streamlit>=1.57.0",
+    "pandas>=2.3.3",
 ]
 
 [build-system]
