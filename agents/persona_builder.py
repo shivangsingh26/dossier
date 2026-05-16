@@ -7,7 +7,7 @@ PIPELINE:
 1. Parse resume PDF + LinkedIn PDF with PyMuPDF → raw text
 2. Show extracted summary, ask if anything is missing
 3. Run 12-question interview to add evidence + depth PDFs can't capture
-4. Load tone.md + voice.md from profile/me/
+4. Load tone.md + voice.md from profile/{user}/
 5. Send everything to claude-sonnet-4-6 → synthesise profile.json
 6. Show output, confirm before saving
 
@@ -15,6 +15,7 @@ RUN VIA: python scripts/run_persona_builder.py
 """
 
 import json
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -25,16 +26,6 @@ from core.logger import get_logger
 logger = get_logger(__name__)
 
 
-PROFILE_ME_DIR = Path("profile/me")
-LINKEDIN_PDF   = PROFILE_ME_DIR / "Shivang_Linkedin_Profile.pdf"
-
-# Supported resume formats — script checks for these in order, uses first found
-RESUME_CANDIDATES = [
-    PROFILE_ME_DIR / "Shivang_Singh_Resume.pdf",
-    PROFILE_ME_DIR / "Shivang_Singh_Resume.png",
-    PROFILE_ME_DIR / "Shivang_Singh_Resume.jpg",
-    PROFILE_ME_DIR / "Shivang_Singh_Resume.jpeg",
-]
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".gif"}
 
 # Pre-filled defaults — user confirms or edits at runtime
@@ -90,8 +81,8 @@ INTERVIEW_QUESTIONS = [
         "hint": "Helps match culture signals — solo contributor vs team player, startup vs enterprise.",
     },
     {
-        "id": "why_ai_eng",
-        "question": "Why AI Engineering specifically? What made you choose this over pure SWE or pure data science?",
+        "id": "why_this_direction",
+        "question": "Why are you targeting these specific roles and companies? What made you choose this direction over other paths you could have taken?",
         "hint": "Your actual answer goes into every cover letter. Take your time with this one.",
     },
     {
@@ -112,7 +103,7 @@ INTERVIEW_QUESTIONS = [
     {
         "id": "side_projects",
         "question": "What have you built, learned, or shipped outside your job in the last 12 months? Does not matter how small.",
-        "hint": "Self-directed learning is a very high signal for MLE and AI Engineer roles.",
+        "hint": "Self-directed learning is a strong signal for engineering roles. Any size counts.",
     },
     {
         "id": "referral_pitch",
@@ -122,28 +113,164 @@ INTERVIEW_QUESTIONS = [
     {
         "id": "voice_sample",
         "question": "Write 2–3 sentences as you'd write in a casual LinkedIn message introducing yourself to a hiring manager. Natural voice — not formal, not a pitch.",
-        "hint": "Example: 'Hey, I'm Shivang — AI Engineer at Publicis Sapient. I've spent the last year building a 3-stage LLM pipeline for pharma ad decomposition and I'm looking to move into a product company where I can go deeper on ML systems.'",
+        "hint": "Example: 'Hey, I'm Alex — Backend Engineer at Acme. I've spent the past year building distributed data pipelines and I'm looking to move to a product company with larger scale.'",
     },
 ]
+
+
+def find_user_pdfs(profile_dir: Path) -> tuple[Path | None, Path | None]:
+    """
+    Scan profile_dir for resume and LinkedIn PDFs.
+    LinkedIn: any PDF with "linkedin" (case-insensitive) in the filename.
+    Resume: any other PDF found in the directory.
+    Returns (resume_path, linkedin_path) — either can be None if not found.
+    """
+    pdfs = list(profile_dir.glob("*.pdf")) + list(profile_dir.glob("*.PDF"))
+    linkedin_pdf = None
+    resume_pdf = None
+    for pdf in pdfs:
+        if "linkedin" in pdf.name.lower():
+            linkedin_pdf = pdf
+        elif resume_pdf is None:
+            resume_pdf = pdf
+    return resume_pdf, linkedin_pdf
+
+
+def parse_questionnaire_file_from_string(content: str) -> dict:
+    """
+    Parse a filled questionnaire.md string into identity, target, and interview_answers.
+    Returns dict with keys: identity, target, interview_answers.
+    Used by parse_questionnaire_file() and directly in tests.
+    """
+    lines = content.splitlines()
+
+    def extract_field(label: str) -> str:
+        """Find 'Label: value' in lines, return value stripped."""
+        for line in lines:
+            if line.strip().startswith(label + ":"):
+                return line.split(":", 1)[1].strip()
+        return ""
+
+    def extract_list_field(label: str) -> list[str]:
+        """Find 'Label: a, b, c' and return as list."""
+        raw = extract_field(label)
+        return [item.strip() for item in raw.split(",") if item.strip()]
+
+    def safe_int(value: str, fallback: int) -> int:
+        try:
+            return int(float(value))  # handles "37.4", "17 months..." → graceful
+        except (ValueError, TypeError):
+            return fallback
+
+    # Support both new split fields and old single "Total months" field for backward compat
+    _ft_raw    = extract_field("Full-time months of experience (write 0 if fresher / student)")
+    _total_raw = extract_field("Total months of professional work experience (write 0 if fresher)")
+    _full_time_months = safe_int(_ft_raw, 0) if _ft_raw else safe_int(_total_raw, 0)
+    _intern_months    = safe_int(extract_field("Internship months of experience (write 0 if none)"), 0)
+
+    # Work style and relocation — values come from the questionnaire file
+    _work_style_raw = extract_field("WorkStyle")
+    _work_style = _work_style_raw.strip() if _work_style_raw.strip() else ""
+
+    _relocation_raw = extract_field("Relocation").strip()
+    _open_to_relocation = bool(_relocation_raw) and _relocation_raw.lower() not in ("no", "none", "n/a", "-")
+    _relocation_cities = [c.strip() for c in _relocation_raw.split(",")
+                          if c.strip() and c.strip().lower() not in ("yes", "no", "none", "n/a")]
+
+    identity = {
+        "name":               extract_field("Name"),
+        "current_role":       extract_field("Current title / role (e.g. Software Engineer, Data Scientist)"),
+        "short_title":        extract_field("Short title — 2-3 words to use in casual intros (e.g. Backend Engineer, AI Engineer)"),
+        "current_company":    extract_field("Current company (write NONE if student or between jobs)"),
+        "location":           extract_field("City / location (e.g. Bengaluru, India)"),
+        "education":          extract_field("Education (e.g. B.Tech CS, IIIT SriCity)"),
+        "full_time_months":   _full_time_months,
+        "intern_months":      _intern_months,
+        "current_ctc_lpa":    safe_int(extract_field("Current CTC in LPA (write 0 if student or not disclosed)"), 0),
+        "notice_period_months": safe_int(extract_field("Notice period in months (write 0 if immediate joiner or student)"), 0),
+        "github_username":    extract_field("GitHub username (leave blank if none)") or None,
+        "work_style":         _work_style,
+        "open_to_relocation": _open_to_relocation,
+        "relocation_cities":  _relocation_cities,
+    }
+
+    target = {
+        "roles":                extract_list_field("TargetRoles"),
+        "min_salary_lpa":       safe_int(extract_field("MinSalary"), 0),
+        "preferred_salary_lpa": safe_int(extract_field("PrefSalary"), 0),
+        "locations":            extract_list_field("Locations"),
+        "hard_nos":             extract_list_field("HardNos"),
+        "target_by":            extract_field("TargetBy"),
+        "company_tiers":        ["MAANG India", "funded_startup", "top_product_co"],
+    }
+
+    question_pattern = re.compile(r"^\[Q(\d+)\]", re.MULTILINE)
+    answer_pattern   = re.compile(r"Answer:\s*\n(.*?)(?=\[Q\d+\]|\Z)", re.DOTALL)
+    q_id_by_index    = {i + 1: q["id"] for i, q in enumerate(INTERVIEW_QUESTIONS)}
+
+    interview_answers: dict[str, str] = {}
+    for match in question_pattern.finditer(content):
+        q_num  = int(match.group(1))
+        q_id   = q_id_by_index.get(q_num)
+        if not q_id:
+            continue
+        next_match  = question_pattern.search(content, match.end())
+        block_end   = next_match.start() if next_match else len(content)
+        block       = content[match.start():block_end]
+        ans_match   = answer_pattern.search(block)
+        interview_answers[q_id] = ans_match.group(1).strip() if ans_match else ""
+
+    return {
+        "identity":          identity,
+        "target":            target,
+        "interview_answers": interview_answers,
+    }
+
+
+def parse_questionnaire_file(path: Path) -> dict:
+    """
+    Read a filled questionnaire.md from disk and parse it.
+    Returns the same dict as parse_questionnaire_file_from_string().
+    """
+    content = path.read_text(encoding="utf-8")
+    return parse_questionnaire_file_from_string(content)
+
 
 SYNTHESIS_SYSTEM_PROMPT = """You are a profile synthesis engine for a job search system called Dossier.
 
 Your input: resume text, LinkedIn text, a structured interview, and the candidate's tone + voice files.
 Your output: a single profile.json that will drive all downstream agents — job scoring, cold messages, resume tailoring, cover letters.
 
-Rules:
-- Evidence-mapped skills: every skill entry has specific proof from their actual work, not just a name
-- Honest depth: infer depth from HOW they described using the skill — do not inflate
-- Use the candidate's exact project names, tool names, and numbers in evidence fields
-- market_aliases: 3-5 common JD keyword variants per skill so job scoring can match them
-- known_gaps: extract from their own words, do not invent
-- career_narrative: use their words, clean up typos only
-- The resume and LinkedIn are the source of truth for roles, dates, education
-- The interview adds depth and evidence that the resume cannot capture
-- short_title: 2-3 words used in casual intros (e.g. "AI Engineer", "Backend Engineer") — from questionnaire or infer from role
-- search_terms: 6-10 exact job title strings to pass to Indeed/LinkedIn job search APIs — must match how real job postings are titled (e.g. "Software Engineer", "SDE-2", not abbreviations like "SWE")
-- watchlist_title_keywords: 8-15 lowercase partial keywords to substring-match against job titles at target companies — shorter than full titles so they catch variants (e.g. "backend" catches "Backend Engineer" AND "Senior Backend Engineer"); infer domain from target roles
-- role_domain: classify as exactly one of: "ml_ai" (ML/AI/Data Science roles), "sde" (software engineering), "data" (data analyst/BI/analytics), "other"
+CLASH RESOLUTION — when resume and LinkedIn disagree on the same fact:
+- Job title: resume wins (official document used in background checks)
+- Employment dates: LinkedIn wins (more precise month/year, more recently maintained)
+- Metrics and numbers (%, FPS, latency, scale): resume wins (LinkedIn rarely has precise numbers)
+- Skills: use BOTH sources — merge all skills, never discard from either
+- Bio / summary narrative: LinkedIn wins (richer, more current)
+- Education institution and degree: resume wins
+- Education grades / CGPA: resume wins (LinkedIn rarely shows grades)
+- Location / current city: LinkedIn wins (reflects current status)
+- Certifications: LinkedIn wins (this is the definitive maintained list)
+- Contact / GitHub / links: LinkedIn wins (from contact section)
+- Project descriptions: merge the best of both — resume has concise metrics, LinkedIn may have more detail
+
+EXTRACTION RULES:
+- skills: every entry must have specific proof (project name + number) from actual work; infer depth from HOW they described use, do not inflate
+- market_aliases: 3-5 JD keyword variants per skill for job scoring matching
+- known_gaps: extract from candidate's own words only — do not invent
+- career_narrative: use their exact words, clean typos only
+- short_title: copy EXACTLY from questionnaire "Short title" field — never infer from LinkedIn headline or target roles
+- full_time_months: from questionnaire if provided; else infer from resume timeline counting only full-time roles (exclude intern/trainee titles)
+- intern_months: from questionnaire if provided; else infer from resume counting internship/trainee roles only
+- search_terms: 6-10 exact job title strings for Indeed/LinkedIn APIs — match how real postings are titled (e.g. "Software Engineer", "SDE-2", not "SWE")
+- watchlist_title_keywords: 8-15 lowercase partial keywords to substring-match job titles — shorter catches variants (e.g. "backend" catches "Backend Engineer" AND "Senior Backend Engineer")
+- role_domain: exactly one of "ml_ai" (ML/AI/Data Science), "sde" (software engineering), "data" (data analyst/BI/analytics), "other"
+- certifications: extract ALL certs from LinkedIn "Certifications" section and resume — include name, issuer, year if available; empty array if none
+- publications: extract ALL research papers, conference papers, patents from resume and LinkedIn — include title, venue, year, url if present; empty array if none
+- key_projects: extract 3-5 most impressive projects from resume — exact project names, impact-focused one-sentence description, full tech stack, specific metric/outcome, URL if listed, type (work/personal/open_source); order: work projects with production metrics first
+- preferred_work_style: copy from questionnaire WorkStyle field verbatim
+- open_to_relocation: true only if questionnaire Relocation field has a non-empty, non-"no" value
+- relocation_cities: list of cities from questionnaire Relocation field; empty array if not open to relocation
 
 Output ONLY valid JSON. No markdown fences, no explanation, nothing before or after the JSON object.
 
@@ -154,7 +281,8 @@ Schema:
     "short_title": "string",
     "current_role": "string",
     "current_company": "string",
-    "months_experience": number,
+    "full_time_months": number,
+    "intern_months": number,
     "current_ctc_lpa": number,
     "notice_period_months": number,
     "education": "string",
@@ -190,9 +318,25 @@ Schema:
     "hard_nos_detail": "string",
     "voice_sample": "string"
   },
-  "tone_ref": "profile/me/tone.md",
-  "voice_ref": "profile/me/voice.md",
-  "writing_samples_ref": "profile/writing_samples/",
+  "certifications": [
+    {"name": "string", "issuer": "string", "year": "string or null"}
+  ],
+  "publications": [
+    {"title": "string", "venue": "string", "year": "string or null", "url": "string or null"}
+  ],
+  "key_projects": [
+    {
+      "name": "string",
+      "description": "string — one sentence, impact-focused",
+      "tech_stack": ["string"],
+      "impact": "string — specific metric, outcome, or result",
+      "url": "string or null",
+      "type": "work or personal or open_source"
+    }
+  ],
+  "preferred_work_style": "string",
+  "open_to_relocation": false,
+  "relocation_cities": ["string"],
   "github": {
     "username": "string or null",
     "top_repos": ["string"],
@@ -207,13 +351,6 @@ Schema:
 
 
 # ─── Resume Parsing — handles both PDF and image formats ─────────────────────
-
-def find_resume_file() -> Path | None:
-    """Return the first resume file found from RESUME_CANDIDATES list."""
-    for candidate in RESUME_CANDIDATES:
-        if candidate.exists():
-            return candidate
-    return None
 
 
 def parse_resume(resume_path: Path) -> str:
@@ -284,12 +421,13 @@ def parse_linkedin_pdf(pdf_path: Path) -> str:
     return text
 
 
-def load_supporting_files() -> str:
+def load_supporting_files(profile_dir: Path) -> str:
     """Load tone.md and voice.md for the LLM to understand writing style."""
     content = ""
-    for filepath in [PROFILE_ME_DIR / "tone.md", PROFILE_ME_DIR / "voice.md"]:
+    for filename in ["tone.md", "voice.md"]:
+        filepath = profile_dir / filename
         if filepath.exists():
-            content += f"\n\n--- {filepath.name} ---\n{filepath.read_text(encoding='utf-8')}"
+            content += f"\n\n--- {filename} ---\n{filepath.read_text(encoding='utf-8')}"
     return content
 
 
@@ -356,6 +494,13 @@ def synthesize_profile(
     interview_answers: dict,
     github_username: str,
     supporting_files: str,
+    profile_dir: Path,
+    questionnaire_identity: dict | None = None,
+    full_time_months: int = 0,
+    intern_months: int = 0,
+    work_style: str = "",
+    open_to_relocation: bool = False,
+    relocation_cities: list | None = None,
 ) -> dict:
     """Send all collected data to claude-sonnet-4-6. Returns parsed profile.json dict."""
     llm = LLMClient()
@@ -383,12 +528,27 @@ def synthesize_profile(
 === TODAY'S DATE ===
 {datetime.now(timezone.utc).strftime("%Y-%m-%d")}
 
+=== IDENTITY FROM QUESTIONNAIRE (use these values VERBATIM in identity fields) ===
+{json.dumps(questionnaire_identity or {}, indent=2)}
+Rules for identity fields:
+- short_title: copy EXACTLY from questionnaire — never infer from LinkedIn headline or target roles
+- current_ctc_lpa: use questionnaire value (0 only if questionnaire says 0 or not disclosed)
+- notice_period_months: use questionnaire value
+- name, current_role, current_company, education, location: questionnaire + resume/LinkedIn both valid; prefer resume/LinkedIn for objective facts
+
+=== EXPERIENCE FROM QUESTIONNAIRE ===
+full_time_months (questionnaire): {full_time_months} (0 = not provided; infer from resume timeline if 0)
+intern_months (questionnaire): {intern_months} (0 = not provided or none; infer from resume timeline if 0)
+
+=== WORK PREFERENCES FROM QUESTIONNAIRE ===
+preferred_work_style: {work_style or "not specified"}
+open_to_relocation: {open_to_relocation}
+relocation_cities: {relocation_cities or []}
+
 === INSTRUCTIONS ===
-- Resume + LinkedIn are the source of truth for roles, companies, dates, education
+- Follow all clash resolution and extraction rules from the system prompt exactly
 - Interview answers add depth, evidence, and specifics that resumes cannot capture
-- For each skill, write evidence using actual project names and numbers from the resume/interview
-- market_aliases should cover how JDs phrase the same skill (vary the wording)
-- meta.sources_ingested: ["resume", "linkedin", "interview", "tone_file", "voice_file"]
+- meta.sources_ingested: always include "resume", "linkedin", "interview"; add "tone_file" only if TONE + VOICE FILES section above is non-empty
 """
 
     print("\n  Sending to claude-sonnet-4-6 for synthesis...")
@@ -398,7 +558,7 @@ def synthesize_profile(
         system_prompt=SYNTHESIS_SYSTEM_PROMPT,
         user_prompt=user_prompt,
         model=config.model_resume,  # claude-sonnet-4-6
-        max_tokens=4096,
+        max_tokens=6000,
     )
 
     # Strip accidental markdown fences
@@ -424,46 +584,73 @@ def save_profile(profile: dict) -> None:
 
 # ─── Main entry point ─────────────────────────────────────────────────────────
 
-def run() -> None:
-    """Run the full persona builder pipeline."""
+def run(answers_path: Path | None = None) -> None:
+    """
+    Run the full persona builder pipeline.
+    answers_path: if provided, parse a filled questionnaire.md instead of running
+                  an interactive interview. Used for building friend profiles.
+    """
+    config      = Config()
+    profile_dir = config.profile_dir
+    is_file_mode = answers_path is not None
+
     print("\n" + "═" * 64)
     print("  DOSSIER — Persona Builder")
-    print("  Builds profile.json from your resume, LinkedIn, and a short interview.")
-    print("  This runs once. Re-run only when your situation changes significantly.")
+    if is_file_mode:
+        print(f"  File mode: reading answers from {answers_path}")
+    else:
+        print("  Interactive mode: terminal interview")
     print("═" * 64)
 
     # Step 1: Parse resume + LinkedIn
-    print("\n  Step 1/4 — Parsing resume and LinkedIn profile...")
+    print(f"\n  Step 1/4 — Parsing resume and LinkedIn profile from {profile_dir}/")
+    resume_pdf, linkedin_pdf = find_user_pdfs(profile_dir)
 
-    resume_file = find_resume_file()
-    if not resume_file:
-        print(f"\n  Warning: No resume file found in {PROFILE_ME_DIR}/")
-        print(f"  Expected one of: Shivang_Singh_Resume.pdf / .png / .jpg")
+    if not resume_pdf:
+        print(f"\n  Warning: No resume PDF found in {profile_dir}/")
         resume_text = ""
     else:
-        print(f"  Found resume: {resume_file.name} ({'image — using Claude vision' if resume_file.suffix.lower() in IMAGE_EXTENSIONS else 'PDF — using PyMuPDF'})")
-        resume_text = parse_resume(resume_file)
+        print(f"  Found resume: {resume_pdf.name}")
+        resume_text = parse_resume(resume_pdf)
         print(f"  Resume parsed OK ({len(resume_text)} chars)")
 
-    linkedin_text = parse_linkedin_pdf(LINKEDIN_PDF)
-    if not linkedin_text:
-        print(f"  Warning: Could not parse LinkedIn PDF at {LINKEDIN_PDF}")
+    if not linkedin_pdf:
+        print(f"  Warning: No LinkedIn PDF found in {profile_dir}/")
+        print("  Tip: rename your LinkedIn PDF to include 'linkedin' in the filename.")
+        linkedin_text = ""
     else:
-        print(f"  LinkedIn parsed OK ({len(linkedin_text)} chars)")
+        linkedin_text = parse_linkedin_pdf(linkedin_pdf)
+        if linkedin_text:
+            print(f"  LinkedIn parsed OK ({len(linkedin_text)} chars)")
 
-    # Step 2: Confirm targets
-    print("\n  Step 2/4 — Confirm job targets")
-    target = collect_targets()
+    # Step 2: Get targets and interview answers
+    full_time_months      = 0
+    intern_months         = 0
+    questionnaire_identity = None
+    if is_file_mode:
+        print(f"\n  Step 2/4 — Parsing questionnaire from {answers_path}")
+        parsed = parse_questionnaire_file(answers_path)
+        target                 = parsed["target"]
+        interview_answers      = parsed["interview_answers"]
+        questionnaire_identity = parsed["identity"]
+        github_username        = questionnaire_identity.get("github_username")
+        full_time_months       = questionnaire_identity.get("full_time_months", 0)
+        intern_months          = questionnaire_identity.get("intern_months", 0)
+        work_style             = questionnaire_identity.get("work_style", "")
+        open_to_relocation     = questionnaire_identity.get("open_to_relocation", False)
+        relocation_cities      = questionnaire_identity.get("relocation_cities", [])
+        print(f"  Parsed {len(interview_answers)} answers, "
+              f"{len(target['roles'])} target roles")
+    else:
+        print("\n  Step 2/4 — Confirm job targets")
+        target = collect_targets()
+        print("\n  Step 3/4 — Interview")
+        interview_answers = conduct_interview()
+        github_username = confirm("\n  GitHub username (optional, press Enter to skip)", "").strip() or None
 
-    # Step 3: Interview
-    print("\n  Step 3/4 — Interview")
-    interview_answers = conduct_interview()
-
-    github_username = confirm("\n  GitHub username (optional, press Enter to skip)", "").strip() or None
-
-    # Step 4: Synthesize
+    # Step 3: Synthesize
     print("\n  Step 4/4 — Synthesising profile.json")
-    supporting_files = load_supporting_files()
+    supporting_files = load_supporting_files(profile_dir)
 
     try:
         profile = synthesize_profile(
@@ -473,22 +660,45 @@ def run() -> None:
             interview_answers=interview_answers,
             github_username=github_username,
             supporting_files=supporting_files,
+            profile_dir=profile_dir,
+            questionnaire_identity=questionnaire_identity,
+            full_time_months=full_time_months,
+            intern_months=intern_months,
+            work_style=work_style,
+            open_to_relocation=open_to_relocation,
+            relocation_cities=relocation_cities,
         )
     except json.JSONDecodeError as e:
         print(f"\n  Error: Claude returned invalid JSON — {e}")
         print("  Try re-running. If it keeps failing, check your ANTHROPIC_API_KEY.")
         return
 
-    # Show result and ask to save
+    # Inject file refs deterministically — only include paths that exist on disk
+    for filename, key in [("tone.md", "tone_ref"), ("voice.md", "voice_ref")]:
+        if (profile_dir / filename).exists():
+            profile[key] = str(profile_dir / filename)
+        else:
+            profile.pop(key, None)
+    writing_samples_dir = profile_dir / "writing_samples"
+    if writing_samples_dir.exists():
+        profile["writing_samples_ref"] = str(writing_samples_dir) + "/"
+    else:
+        profile.pop("writing_samples_ref", None)
+
+    # Show result
     print("\n" + "═" * 64)
     print("  GENERATED profile.json — review before saving:")
     print("═" * 64 + "\n")
     print(json.dumps(profile, indent=2, ensure_ascii=False))
-
     print("\n" + "═" * 64)
-    save_it = input("  Save as profile/profile.json? (yes/no): ").strip().lower()
-    if save_it in ("yes", "y"):
+
+    if is_file_mode:
         save_profile(profile)
-        print("  Done. Run scripts/run_job_discovery.py next.")
+        print(f"  Done. Run: python run_dossier.py --user {config.user}")
     else:
-        print("  Not saved. Re-run when ready.")
+        save_it = input("  Save as profile.json? (yes/no): ").strip().lower()
+        if save_it in ("yes", "y"):
+            save_profile(profile)
+            print("  Done. Run scripts/run_job_discovery.py next.")
+        else:
+            print("  Not saved. Re-run when ready.")

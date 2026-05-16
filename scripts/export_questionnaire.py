@@ -70,10 +70,13 @@ Short title — 2-3 words to use in casual intros (e.g. Backend Engineer, AI Eng
 Current company (write NONE if student or between jobs):
 City / location (e.g. Bengaluru, India):
 Education (e.g. B.Tech CS, IIIT SriCity):
-Total months of professional work experience (write 0 if fresher):
+Full-time months of experience (write 0 if fresher / student):
+Internship months of experience (write 0 if none):
 Current CTC in LPA (write 0 if student or not disclosed):
 Notice period in months (write 0 if immediate joiner or student):
 GitHub username (leave blank if none):
+WorkStyle: (e.g. Hybrid 2-3 days / Remote only / In-office / Flexible)
+Relocation: (leave blank if no; or list cities e.g. Pune, Hyderabad)
 
 ================================
 == JOB TARGETS ==
