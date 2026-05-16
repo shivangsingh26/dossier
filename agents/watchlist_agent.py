@@ -331,6 +331,8 @@ def fetch_jobs_lever(company_name: str, handle: str) -> list[dict]:
         return []
 
 
+
+
 def fetch_jobs_linkedin_company(
     company_name: str,
     company_id: str,
@@ -394,13 +396,33 @@ def run(min_score: int = 5, location: str = "India") -> list:
 
     # ── Step 1: Load profile ──────────────────────────────────────────────────
     console.print("\n[bold]Step 1/4[/bold] — Loading profile...")
-    profile           = load_profile()
-    current_months    = profile["identity"].get("total_experience_months", 0)
-    switch_months     = profile["target"].get("switch_timeline_months", 12)
-    exp_band          = compute_experience_band(current_months, switch_months)
-    system_prompt     = build_scoring_system_prompt(exp_band)
+    profile  = load_profile()
+    identity = profile["identity"]
+    target   = profile["target"]
+
+    # Experience: full-time only; freshers (no full-time) count internship
+    full_time_months = identity.get("full_time_months", 0)
+    intern_months    = identity.get("intern_months", 0)
+    current_months   = full_time_months if full_time_months > 0 else intern_months
+
+    # Switch timeline from target_by date
+    from datetime import date as _date
+    target_by_str = target.get("target_by", "")
+    switch_months = 12
+    if target_by_str:
+        try:
+            target_date   = _date.fromisoformat(target_by_str + "-01")
+            switch_months = max(1, (target_date - _date.today()).days // 30)
+        except (ValueError, TypeError):
+            pass
+
+    role_domain  = target.get("role_domain", "ml_ai")
+    target_roles = target.get("roles", [])
+
+    exp_band          = compute_experience_band(current_months, switch_months, target_roles)
+    system_prompt     = build_scoring_system_prompt(exp_band, role_domain, target_roles)
     candidate_summary = build_candidate_summary(profile, exp_band)
-    hard_nos          = profile["target"].get("hard_nos", [])
+    hard_nos          = target.get("hard_nos", [])
 
     console.print(f"  Candidate: {profile['identity']['name']} | Band: {exp_band['band']}")
 
@@ -505,7 +527,7 @@ def run(min_score: int = 5, location: str = "India") -> list:
             })
             continue
 
-        job_function = classify_job_function(title)
+        job_function = classify_job_function(title, role_domain)
         if job_function == "support_ops":
             skip_counts["support_ops"] += 1
             rejected_jobs.append({
@@ -568,6 +590,7 @@ def run(min_score: int = 5, location: str = "India") -> list:
                 candidate_summary, system_prompt,
                 j["job_function"], llm_instance, j["company_tier"],
                 j.get("years_required"), j.get("degree_required", "none"),
+                role_domain,
             ): j
             for j in jobs_for_llm
         }

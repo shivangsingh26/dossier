@@ -40,7 +40,11 @@ console = Console()
 
 # ─── Experience Band Logic ────────────────────────────────────────────────────
 
-def compute_experience_band(current_months: int, switch_timeline_months: int) -> dict:
+def compute_experience_band(
+    current_months: int,
+    switch_timeline_months: int,
+    target_roles: list[str] | None = None,
+) -> dict:
     """
     Compute the candidate's experience level at the time they plan to switch.
     Returns a dict with band label, seniority target, and scoring guidance.
@@ -60,9 +64,8 @@ def compute_experience_band(current_months: int, switch_timeline_months: int) ->
             "band": "0-3 years",
             "months_at_switch": months_at_switch,
             "target_seniority": "Entry to junior level",
-            "ideal_titles": ["MLE-1", "AI Engineer", "Data Scientist", "Applied Scientist",
-                             "Machine Learning Engineer", "Associate ML Engineer",
-                             "DS-1", "DS-2", "MLE-2", "AI Engineer-1", "AI Engineer-2"],
+            "ideal_titles": target_roles or ["MLE-1", "AI Engineer", "Data Scientist",
+                             "Machine Learning Engineer", "Software Engineer", "SDE-1"],
             "penalise_titles": ["Senior", "Sr", "Staff", "Principal", "Lead", "Manager",
                                 "Director", "Head", "VP", "Intern", "Internship", "Trainee",
                                 "Fresher", "Apprentice", "Apprenticeship"],
@@ -121,48 +124,69 @@ def compute_experience_band(current_months: int, switch_timeline_months: int) ->
 
 # ─── Scoring Prompt ──────────────────────────────────────────────────────────
 
-def build_scoring_system_prompt(exp_band: dict) -> str:
-    """Build the scoring system prompt including experience-level guidance."""
-    return f"""You are a job scoring agent for an AI/ML Engineer job search.
+def build_scoring_system_prompt(
+    exp_band: dict,
+    role_domain: str = "ml_ai",
+    target_roles: list[str] | None = None,
+) -> str:
+    """
+    Build the scoring system prompt.
+    Fully profile-driven — no domain knowledge hardcoded here.
+    role_domain and target_roles come from profile.json.
+    """
+    target_roles_str = ", ".join(target_roles) if target_roles else "not specified"
 
-Score how well the job description matches the candidate profile.
+    domain_labels = {
+        "ml_ai": "Machine Learning / AI / Data Science engineering",
+        "sde":   "Software Development / Backend / Systems engineering",
+        "data":  "Data Analytics / Business Intelligence / Data Engineering",
+        "other": "technical engineering",
+    }
+    domain_label = domain_labels.get(role_domain, domain_labels["other"])
+
+    return f"""You are a job scoring agent. Score how well a job matches the candidate profile.
 Return ONLY valid JSON — no explanation, no markdown, nothing outside the JSON object.
 
 MISSING INFO HANDLING:
-If salary, experience requirement, or other key fields are not missing in the JD,
+If salary, experience requirement, or other key fields are missing from the JD,
 use reasonable inference from company type and industry norms. Do not penalise for missing info.
 
 HARD RULE — CHECK THIS FIRST BEFORE ANY OTHER SCORING:
-If the job title contains ANY of these words: "Senior", "Sr.", "Staff", "Principal", "Lead", "Manager",
-"Director", "Head of", "VP", "President" → IMMEDIATELY return score=3, relevancy="low".
-No exceptions. Not even for MAANG. The candidate is {exp_band['band']} experience level
-({exp_band['months_at_switch']} months at switch) and these roles are too senior.
-Roles WITHOUT a seniority prefix are fine: "Applied Scientist", "ML Engineer", "Data Scientist",
-"AI Engineer", "Machine Learning Engineer" — these can be any level and should be scored normally.
+If the job title contains ANY of these seniority words: "Senior", "Sr.", "Staff", "Principal",
+"Lead", "Manager", "Director", "Head of", "VP", "President"
+→ IMMEDIATELY return score=3, relevancy="low". No exceptions. Not even for top companies.
+The candidate has {exp_band['band']} experience ({exp_band['months_at_switch']} months at switch)
+and these roles are too senior. Titles without a seniority prefix are fine — score them normally.
 
 SCORING (only if title passes the hard rule above):
-1. Company + salary: 0-4 points
-   IMPORTANT: If "Company tier" is provided in the pre-extracted facts below, use it directly — do not reclassify.
-   - maang (MAANG India) + salary likely ≥ target: 4 pts
-   - top_global_product or top_indian_product: 3 pts
+1. Company quality: 0-4 points
+   IMPORTANT: If "Company tier" is provided in the pre-extracted facts below, use it directly.
+   - maang: 4 pts | top_global_product or top_indian_product: 3 pts
    - top_ai_startup: 2 pts
-   - unknown tier or not in watchlist → infer: good product company = 2 pts, service company = cap total at 2
-2. ML/AI role relevance: 0-3 points
-   - Core ML/AI role (MLE, AI Engineer, Applied Scientist, Data Scientist with ML work): 3 pts
-   - Mostly SWE with some ML exposure: 1-2 pts
-   - Pure SWE or non-technical: 0 pts
+   - unknown → infer from JD: good product company = 2 pts, service/outsourcing company = cap total at 2
+
+2. Role relevance: 0-3 points
+   The candidate is targeting: {target_roles_str}
+   Their domain: {domain_label}
+   - Job clearly matches one of their target roles or is in the same domain: 3 pts
+   - Job is adjacent — related field with partial overlap: 1-2 pts
+   - Job is in a completely different domain (e.g., candidate targets {domain_label} but this
+     job is unrelated — wrong technical function entirely): 0 pts, cap total score at 3
+
 3. Skill overlap: 0-2 points
-   - Strong (≥3 key skills match): 2 pts | Partial (1-2 match): 1 pt
-   - Missing a REQUIRED skill: -1 pt | Missing a PREFERRED skill: -0.3 pts
+   - Strong match (3+ key skills from candidate profile match JD requirements): 2 pts
+   - Partial match (1-2 skills match): 1 pt
+   - Missing a REQUIRED skill from JD: -1 pt | Missing a PREFERRED skill: -0.3 pts
+
 4. Experience fit: 0-1 point
-   - Role is entry/junior level ({exp_band['band']}): 1 pt
-   - Requires slightly more experience but not senior-titled: 0.5 pt
+   - Role requires experience level consistent with {exp_band['band']}: 1 pt
+   - Requires slightly more experience but not a seniority-level mismatch: 0.5 pt
 
 Output schema (return exactly this, nothing else):
 {{
   "score": integer between 1 and 10,
   "relevancy": "high" or "medium" or "low",
-  "reason": "one sentence: mention seniority level, company quality, and top skill match or gap",
+  "reason": "one sentence: mention role domain fit, company quality, and top skill match or gap",
   "required_skills_missing": ["list of required skills candidate lacks"],
   "preferred_skills_missing": ["list of preferred skills candidate lacks"],
   "job_id": "company_roleSlug_relevancy"
@@ -197,10 +221,15 @@ def build_candidate_summary(profile: dict, exp_band: dict) -> str:
     for s in skills:
         market_aliases.extend(s.get("market_aliases", []))
 
+    # Use full_time_months if available; fall back to intern for freshers
+    full_time_months = identity.get("full_time_months", 0)
+    intern_months    = identity.get("intern_months", 0)
+    experience_months = full_time_months if full_time_months > 0 else intern_months
+
     return f"""
 Name: {identity.get('name')}
 Current Role: {identity.get('current_role')} at {identity.get('current_company')}
-Total Experience: {identity.get('total_experience_months')} months
+Experience: {experience_months} months
 Experience at Switch: ~{exp_band['months_at_switch']} months ({exp_band['band']} band)
 Target Seniority: {exp_band['target_seniority']}
 Education: {identity.get('education')}
@@ -324,43 +353,175 @@ def classify_company_tier(company_name: str) -> str:
 
 # ─── Pre-LLM Title Filters ────────────────────────────────────────────────────
 
-# Support/ops titles — never core ML work regardless of company or JD text.
-# These are universal across all job seekers, so fine to hardcode as constants.
-_SUPPORT_OPS_TITLE_KEYWORDS = [
-    "support engineer", "site reliability", " sre ", "devops engineer",
-    "platform engineer", "cloud engineer", "infrastructure engineer",
-    "systems development engineer", "systems engineer",
+# ── Title keyword lists for job function classification ───────────────────────
+#
+# These lists cover common title variants seen in Indian job postings (LinkedIn,
+# Indeed, Naukri, Greenhouse, Lever). Longer/more-specific strings come first
+# so they match before shorter substrings.
+#
+# Rule: pad title with spaces before checking so "sre" doesn't match "prestige".
+# All keywords must be lowercase.
+
+# Support / Ops / IT — off-domain for all engineering candidates
+_SUPPORT_OPS_KEYWORDS = [
+    "technical support engineer", "customer support engineer", "support engineer",
+    "site reliability engineer", " sre ", "helpdesk", "help desk",
+    "it support", "service desk", "desktop support", "network engineer",
+    "network operations", "noc engineer", "it administrator", "sysadmin",
+    "system administrator", "it operations",
 ]
 
-# Pure SWE titles — may mention ML in JD but job function is software engineering.
-# We pass this as a fact to the LLM rather than hard-capping, because some
-# SWE roles at top companies do have meaningful ML work inside the description.
-_PURE_SWE_TITLE_KEYWORDS = [
-    "software development engineer", "full stack", "fullstack",
-    "frontend engineer", "front-end engineer", "backend engineer",
-    "back-end engineer", "java developer", "web developer",
+# ML / AI / Data Science titles — target for ml_ai, off-domain for sde/data-analyst
+_ML_AI_DS_KEYWORDS = [
+    # Data Science
+    "data scientist", "data science engineer", "data science lead",
+    # Machine Learning
+    "machine learning engineer", "ml engineer", "mle ", "mle-",
+    "machine learning researcher", "ml researcher", "ml platform engineer",
+    "machine learning platform", "machine learning scientist",
+    # AI / GenAI / LLM
+    "ai engineer", "ai/ml engineer", "ml/ai engineer", "artificial intelligence engineer",
+    "generative ai engineer", "gen ai engineer", "genai engineer",
+    "llm engineer", "large language model engineer",
+    "ai research engineer", "ai researcher", "ai scientist",
+    "conversational ai", "prompt engineer",
+    # Applied Science
+    "applied scientist", "applied ml", "applied machine learning",
+    "applied ai", "applied research scientist",
+    "research scientist", "research engineer",
+    # Specializations
+    "nlp engineer", "natural language processing engineer", "nlp researcher",
+    "computer vision engineer", "cv engineer", "vision engineer",
+    "deep learning engineer", "deep learning researcher",
+    "speech engineer", "speech scientist",
+    "reinforcement learning",
+    # MLOps / AI Infra
+    "mlops engineer", "ml ops engineer", "ml infrastructure engineer",
+    "ai infrastructure engineer", "model deployment engineer",
+    "feature engineering", "data science platform",
+]
+
+# SDE / Backend / Systems titles — target for sde, off-domain for ml_ai
+_SDE_BACKEND_KEYWORDS = [
+    # Generic SWE
+    "software development engineer", "software developer", "software engineer",
+    "sde ", "sde-", "sde1", "sde2", "sde3",
+    # Backend
+    "backend engineer", "back-end engineer", "backend developer", "back-end developer",
+    "server side engineer", "server-side engineer",
+    # Systems / Platform / Infra (engineering flavor)
+    "systems engineer", "systems software engineer", "platform engineer",
+    "infrastructure engineer", "distributed systems engineer",
+    "site reliability", "reliability engineer",
+    "core engineer", "core backend", "core platform",
+    # Language-specific
+    "c++ engineer", "c++ developer", "cpp engineer",
+    "java engineer", "java developer", "java backend",
+    "golang engineer", "go developer", "go engineer",
+    "python engineer", "python developer",
+    "rust engineer", "rust developer",
+    "node.js engineer", "nodejs engineer", "node developer",
+    "ruby engineer", "ruby developer", "rails developer",
+    "scala engineer", "scala developer",
+    "kotlin engineer", "kotlin developer",
+    # Specific SWE domains
+    "api engineer", "api developer", "microservices engineer",
+    "cloud backend engineer", "distributed backend",
+    "database engineer", "storage engineer",
+    # Compiler / Kernel / Low-level
+    "compiler engineer", "kernel engineer", "embedded engineer",
+    "firmware engineer", "embedded systems",
+    "operating systems engineer",
+]
+
+# Frontend / Mobile / Full-stack — off-domain for backend sde, off-domain for ml_ai
+_FRONTEND_MOBILE_KEYWORDS = [
+    # Frontend
+    "frontend engineer", "front-end engineer", "frontend developer", "front-end developer",
+    "ui engineer", "ui developer", "ux engineer",
+    "react engineer", "react developer", "reactjs",
+    "angular developer", "angularjs", "vue developer", "vuejs",
+    "javascript engineer", "typescript engineer",
+    "web developer", "web engineer",
+    # Mobile
+    "ios engineer", "ios developer", "swift engineer",
+    "android engineer", "android developer", "kotlin android",
+    "mobile engineer", "mobile developer",
+    "react native", "flutter engineer", "flutter developer",
+    "cross-platform mobile",
+    # Full-stack
+    "full stack engineer", "full-stack engineer", "fullstack engineer",
+    "full stack developer", "full-stack developer", "fullstack developer",
+    "mean stack", "mern stack",
+]
+
+# Data / Analytics / BI — target for data domain, off-domain for sde/ml_ai
+_DATA_ANALYTICS_KEYWORDS = [
+    "data analyst", "data analytics engineer", "analytics engineer",
+    "business analyst", "business intelligence", "bi developer",
+    "bi engineer", "bi analyst", "tableau developer", "power bi developer",
+    "looker developer", "qlik developer",
+    "etl developer", "etl engineer", "data warehouse engineer",
+    "reporting analyst", "insights analyst",
+    "sql analyst", "sql developer",
+    "product analyst", "growth analyst", "marketing analyst",
+]
+
+# ML qualifier words — if a title has these, it's in-domain for ml_ai even if
+# it also matches an SDE keyword (e.g., "Software Engineer, Machine Learning")
+_ML_QUALIFIER_WORDS = [
+    " ai ", " ml ", " llm ", "machine learning", "artificial intelligence",
+    "nlp", "nlp ", "genai", "generative ai", "deep learning",
+    "computer vision", "data science", "applied science",
 ]
 
 
-def classify_job_function(title: str) -> str:
+def classify_job_function(title: str, role_domain: str = "ml_ai") -> str:
     """
-    Classify the job function from the title alone — no LLM needed.
-    Returns: 'support_ops' | 'pure_swe' | 'other'
+    Classify job function from title alone — no LLM needed.
+    Returns: 'support_ops' | 'off_domain' | 'other'
 
-    'support_ops' → hard cap at 3 before LLM (never core ML work)
-    'pure_swe'    → pass as stated fact to LLM (may have ML inside JD, let LLM decide)
-    'other'       → normal LLM scoring
+    'support_ops' → hard pre-filter for all users (never a core eng role)
+    'off_domain'  → wrong domain for this candidate (passed as fact to LLM)
+    'other'       → in-domain or ambiguous — score normally via LLM
+
+    role_domain comes from profile["target"]["role_domain"]:
+      "ml_ai" | "sde" | "data" | "other"
     """
-    title_lower = " " + title.lower() + " "   # pad so partial-word checks are reliable
-    for kw in _SUPPORT_OPS_TITLE_KEYWORDS:
-        if kw in title_lower:
+    t = " " + title.lower() + " "   # pad for whole-word matching
+
+    # Support/ops is off-domain for everyone
+    for kw in _SUPPORT_OPS_KEYWORDS:
+        if kw in t:
             return "support_ops"
-    for kw in _PURE_SWE_TITLE_KEYWORDS:
-        if kw in title_lower:
-            # A SWE title with an explicit AI/ML qualifier is ml_adjacent, not pure_swe
-            if any(q in title_lower for q in [" ai ", " ml ", "machine learning", "llm", "nlp", "genai"]):
-                return "other"
-            return "pure_swe"
+
+    if role_domain == "ml_ai":
+        # For ML/AI candidates: pure SWE/frontend/mobile = off-domain
+        # UNLESS the title also contains an ML qualifier (e.g. "SWE - ML Platform")
+        has_ml_qualifier = any(q in t for q in _ML_QUALIFIER_WORDS)
+        if not has_ml_qualifier:
+            for kw in _SDE_BACKEND_KEYWORDS + _FRONTEND_MOBILE_KEYWORDS:
+                if kw in t:
+                    return "off_domain"
+
+    elif role_domain == "sde":
+        # For SDE candidates: ML/AI/DS titles = off-domain; frontend/mobile = off-domain
+        for kw in _ML_AI_DS_KEYWORDS:
+            if kw in t:
+                return "off_domain"
+        for kw in _FRONTEND_MOBILE_KEYWORDS:
+            if kw in t:
+                return "off_domain"
+        for kw in _DATA_ANALYTICS_KEYWORDS:
+            if kw in t:
+                return "off_domain"
+
+    elif role_domain == "data":
+        # For data/analytics candidates: pure SWE and ML engineering = off-domain
+        for kw in _SDE_BACKEND_KEYWORDS + _ML_AI_DS_KEYWORDS:
+            if kw in t:
+                return "off_domain"
+
     return "other"
 
 
@@ -536,6 +697,7 @@ def score_job(
     company_tier: str = "unknown",
     years_required: int | None = None,
     degree_required: str = "none",
+    role_domain: str = "ml_ai",
 ) -> dict:
     """
     Score a single job against the candidate profile using gpt-5-nano.
@@ -548,11 +710,25 @@ def score_job(
     llm    = shared_llm if shared_llm is not None else LLMClient()
     config = Config()
 
-    function_labels = {
-        "support_ops": "Support / Operations (not core ML work)",
-        "pure_swe":    "Pure Software Engineering (minimal ML involvement expected)",
-        "other":       "ML / AI / Data role (score normally)",
-    }
+    # Labels are role-domain aware — the LLM reads these to understand relevance
+    if role_domain == "sde":
+        function_labels = {
+            "support_ops": "Support / Operations — not a core engineering role (hard cap at 2)",
+            "off_domain":  "ML / Data Science / Frontend role — NOT a SDE or backend role; give 0 pts for role relevance",
+            "other":       "SDE / Backend / Systems role — this is the target role; score normally",
+        }
+    elif role_domain == "data":
+        function_labels = {
+            "support_ops": "Support / Operations — not a core analytics role (hard cap at 2)",
+            "off_domain":  "Engineering / ML role — NOT a data analytics or BI role; give 0 pts for role relevance",
+            "other":       "Data / Analytics / BI role — this is the target role; score normally",
+        }
+    else:  # ml_ai and other
+        function_labels = {
+            "support_ops": "Support / Operations — not a core ML/AI role (hard cap at 2)",
+            "off_domain":  "Pure SWE / Backend / Frontend role — NOT an ML/AI/Data Science role; give 0 pts for role relevance",
+            "other":       "ML / AI / Data Science role — this is the target role; score normally",
+        }
     function_note = function_labels.get(job_function, "Score normally")
 
     tier_labels = {
@@ -589,7 +765,7 @@ JOB TO SCORE:
 Company: {company}
 Role: {title}
 Description:
-{description[:2500]}
+{description[:4000]}
 """
 
     try:
@@ -729,10 +905,30 @@ def run(hours_old: int = 72, min_score: int = 5) -> list:
     console.print("\n[bold]Step 1/4[/bold] — Loading profile...")
     profile = load_profile()
 
-    current_months  = profile["identity"].get("total_experience_months", 0)
-    switch_months   = profile["target"].get("switch_timeline_months", 12)
-    exp_band        = compute_experience_band(current_months, switch_months)
-    system_prompt   = build_scoring_system_prompt(exp_band)
+    identity = profile["identity"]
+    target   = profile["target"]
+
+    # Experience: full-time only; for freshers (no full-time) count internship
+    full_time_months = identity.get("full_time_months", 0)
+    intern_months    = identity.get("intern_months", 0)
+    current_months   = full_time_months if full_time_months > 0 else intern_months
+
+    # Switch timeline: compute from target_by date (e.g. "2026-07") vs today
+    from datetime import date as _date
+    target_by_str = target.get("target_by", "")
+    switch_months = 12  # default
+    if target_by_str:
+        try:
+            target_date   = _date.fromisoformat(target_by_str + "-01")
+            switch_months = max(1, (target_date - _date.today()).days // 30)
+        except (ValueError, TypeError):
+            pass
+
+    role_domain  = target.get("role_domain", "ml_ai")
+    target_roles = target.get("roles", [])
+
+    exp_band          = compute_experience_band(current_months, switch_months, target_roles)
+    system_prompt     = build_scoring_system_prompt(exp_band, role_domain, target_roles)
     candidate_summary = build_candidate_summary(profile, exp_band)
     hard_nos        = profile["target"].get("hard_nos", [])
     locations       = profile["target"].get("locations", ["Bengaluru"])
@@ -746,16 +942,8 @@ def run(hours_old: int = 72, min_score: int = 5) -> list:
     console.print(f"\n[bold]Step 2/4[/bold] — Fetching jobs (last {hours_old}h)...")
     console.print(f"  Sources: Indeed + Glassdoor (JobSpy) + LinkedIn (guest API)")
 
-    # Search terms come from profile["target"]["search_terms"] so any user can
-    # customise them without touching code. Falls back to sensible defaults for
-    # ML/AI roles if the field isn't present.
-    default_search_terms = [
-        "Machine Learning Engineer", "AI Engineer", "Applied Scientist",
-        "Data Scientist", "Generative AI Engineer", "LLM Engineer",
-        "NLP Engineer", "MLOps Engineer", "AI Research Engineer",
-        "Computer Vision Engineer",
-    ]
-    search_terms = profile["target"].get("search_terms", default_search_terms)
+    # Search terms from profile — never hardcoded. Falls back to target roles if missing.
+    search_terms = target.get("search_terms") or target_roles
     primary_location = locations[0]
 
     # Source A: Indeed + Glassdoor via JobSpy
@@ -839,7 +1027,7 @@ def run(hours_old: int = 72, min_score: int = 5) -> list:
             })
             continue
 
-        job_function = classify_job_function(title)
+        job_function = classify_job_function(title, role_domain)
         if job_function == "support_ops":
             skipped_low += 1
             rejected_jobs.append({
@@ -898,6 +1086,7 @@ def run(hours_old: int = 72, min_score: int = 5) -> list:
                 j["company"], j["title"], j["description"],
                 candidate_summary, system_prompt, j["job_function"], llm_instance,
                 j["company_tier"], j.get("years_required"), j.get("degree_required", "none"),
+                role_domain,
             ): j
             for j in jobs_for_llm
         }
