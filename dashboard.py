@@ -1,8 +1,8 @@
 """
 dashboard.py — Dossier job tracker portal.
 
-What users see: their scored jobs, match reasons, skill gaps, one-tap status updates.
-What this is NOT: a pipeline monitor. All pipeline internals are hidden.
+Two-panel layout: scrollable job cards (left) + sticky detail view (right).
+Cards replace the spreadsheet data editor for a modern SaaS feel.
 
 Phase B — modular, session-cached, no blocking I/O in render loop.
 
@@ -36,12 +36,22 @@ STATUS_META = {
 }
 
 TAB_FILTERS = {
-    "All":          None,
-    "⭐ Interested": "Interested",
-    "✅ Applied":    "Applied",
-    "🔵 Not Reviewed": "Not Reviewed",
-    "⏭️ Skipped":    "Skipped",
+    "All":           None,
+    "⭐ Interested":  "Interested",
+    "✅ Applied":     "Applied",
+    "🔵 New":         "Not Reviewed",
+    "⏭️ Skipped":     "Skipped",
+    "❌ Rejected":    "Rejected",
 }
+
+RELEVANCY_COLORS = {
+    "STRONG": ("#15803d", "#dcfce7"),
+    "GOOD":   ("#1d4ed8", "#dbeafe"),
+    "FAIR":   ("#b45309", "#fef3c7"),
+    "WEAK":   ("#6b7280", "#f3f4f6"),
+}
+
+MAX_CARDS = 40  # cap per tab to keep render fast
 
 
 # ─── DB helpers ───────────────────────────────────────────────────────────────
@@ -90,7 +100,11 @@ def fetch_jobs(user: str, min_score: int) -> pd.DataFrame:
         """, (min_score,)).fetchall()
     if not rows:
         return pd.DataFrame()
-    return pd.DataFrame([dict(r) for r in rows]).reset_index(drop=True)
+    return (
+        pd.DataFrame([dict(r) for r in rows])
+        .drop_duplicates(subset=["job_id"], keep="first")
+        .reset_index(drop=True)
+    )
 
 
 def upsert_status(user: str, job_id: str, status: str, notes: str = "") -> None:
@@ -104,21 +118,6 @@ def upsert_status(user: str, job_id: str, status: str, notes: str = "") -> None:
                 notes      = excluded.notes,
                 updated_at = excluded.updated_at
         """, (job_id, status, notes, datetime.now(timezone.utc).isoformat()))
-        conn.commit()
-
-
-def bulk_save(user: str, rows: pd.DataFrame) -> None:
-    """Persist multiple status changes at once. rows needs job_id, status, notes."""
-    now = datetime.now(timezone.utc).isoformat()
-    with _db(user) as conn:
-        for _, r in rows.iterrows():
-            conn.execute("""
-                INSERT INTO job_status (job_id, status, notes, updated_at)
-                VALUES (?, ?, ?, ?)
-                ON CONFLICT(job_id) DO UPDATE SET
-                    status = excluded.status, notes = excluded.notes,
-                    updated_at = excluded.updated_at
-            """, (r["job_id"], r["status"], r["notes"], now))
         conn.commit()
 
 
@@ -165,38 +164,29 @@ def _hash(password: str) -> str:
 
 
 def load_auth() -> dict:
-    """Return {user: hashed_password} from profile/auth.json. Empty dict if missing."""
+    """Return {user: hashed_password} from profile/auth.json."""
     if not AUTH_FILE.exists():
         return {}
     return json.loads(AUTH_FILE.read_text(encoding="utf-8"))
 
 
 def verify(user: str, password: str) -> bool:
-    """Return True if password matches the stored hash for user."""
     auth = load_auth()
     return auth.get(user) == _hash(password)
 
 
 def show_login() -> None:
-    """Render the full-page login form. Blocks until authenticated."""
+    """Full-page login. Blocks until authenticated."""
     st.markdown("""
     <style>
-    .login-wrap {
-        display: flex; justify-content: center; align-items: center;
-        min-height: 70vh;
-    }
-    .login-card {
-        background: white; border: 1px solid #e2e8f0; border-radius: 18px;
-        padding: 40px 44px; max-width: 400px; width: 100%;
-        box-shadow: 0 8px 32px rgba(0,0,0,0.08);
-        text-align: center;
-    }
+    [data-testid="stSidebar"] { display: none !important; }
+    .block-container { max-width: 420px !important; margin: 0 auto !important; }
     </style>
-    <div class="login-wrap"><div class="login-card">
-    <div style="font-size:40px;margin-bottom:8px">🎯</div>
-    <div style="font-size:22px;font-weight:800;color:#0f172a;letter-spacing:-0.5px">Dossier</div>
-    <div style="font-size:13px;color:#94a3b8;margin-bottom:28px">Job Intelligence Portal</div>
-    </div></div>
+    <div style="text-align:center;padding:52px 0 28px">
+        <div style="font-size:44px;margin-bottom:10px">🎯</div>
+        <div style="font-size:26px;font-weight:800;color:#0f172a;letter-spacing:-0.8px">Dossier</div>
+        <div style="font-size:13px;color:#94a3b8;margin-top:4px;font-weight:500">Job Intelligence Portal</div>
+    </div>
     """, unsafe_allow_html=True)
 
     auth = load_auth()
@@ -207,168 +197,323 @@ def show_login() -> None:
         )
         st.stop()
 
-    _, col_c, _ = st.columns([1, 2, 1])
-    with col_c:
+    with st.container(border=True):
+        st.markdown(
+            '<div style="font-size:15px;font-weight:700;color:#0f172a;margin-bottom:12px">Sign in to continue</div>',
+            unsafe_allow_html=True,
+        )
         with st.form("login_form", clear_on_submit=False):
-            st.markdown(
-                '<div style="font-size:15px;font-weight:600;color:#1e293b;margin-bottom:4px">Sign in</div>',
-                unsafe_allow_html=True,
-            )
             username = st.selectbox("Username", sorted(auth.keys()), label_visibility="collapsed")
-            password = st.text_input("Password", type="password", placeholder="Password", label_visibility="collapsed")
-            submitted = st.form_submit_button("Sign in →", use_container_width=True, type="primary")
-
-            if submitted:
+            password = st.text_input("Password", type="password", placeholder="Password ···", label_visibility="collapsed")
+            if st.form_submit_button("Continue →", use_container_width=True, type="primary"):
                 if verify(username, password):
                     st.session_state.authenticated_user = username
                     st.rerun()
                 else:
-                    st.error("Incorrect password. Try again.")
+                    st.error("Incorrect password — try again.")
 
 
 # ─── CSS ──────────────────────────────────────────────────────────────────────
 
 CUSTOM_CSS = """
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
+/* ── Base reset ── */
 html, body, [class*="css"] {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
+    -webkit-font-smoothing: antialiased;
 }
-
 #MainMenu, footer, header { visibility: hidden; }
 .block-container {
-    padding-top: 1.5rem !important;
+    padding-top: 1.25rem !important;
     padding-bottom: 2rem !important;
-    max-width: 1600px !important;
+    max-width: 1640px !important;
 }
 
 /* ── Sidebar ── */
 [data-testid="stSidebar"] {
-    background: linear-gradient(180deg, #0f172a 0%, #1e1b4b 100%) !important;
-    border-right: 1px solid #1e293b;
+    background: #0f172a !important;
+    border-right: 1px solid rgba(255,255,255,0.05) !important;
 }
 [data-testid="stSidebar"] * { color: #e2e8f0 !important; }
+[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p { color: #cbd5e1 !important; }
+[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] code { color: #94a3b8 !important; background: #1e293b !important; }
 [data-testid="stSidebar"] .stSelectbox > div > div {
     background: #1e293b !important;
     border: 1px solid #334155 !important;
     border-radius: 8px !important;
 }
-[data-testid="stSidebar"] hr { border-color: #1e293b !important; }
+[data-testid="stSidebar"] .stMultiSelect > div > div {
+    background: #1e293b !important;
+    border: 1px solid #334155 !important;
+    border-radius: 8px !important;
+}
+[data-testid="stSidebar"] hr { border-color: rgba(255,255,255,0.07) !important; }
 [data-testid="stSidebar"] .stButton > button {
-    background: #3730a3 !important;
-    color: white !important;
-    border: none !important;
+    background: #1e293b !important;
+    color: #cbd5e1 !important;
+    border: 1px solid #334155 !important;
     border-radius: 8px !important;
     font-weight: 500 !important;
+    font-size: 13px !important;
     transition: all 0.15s ease !important;
 }
 [data-testid="stSidebar"] .stButton > button:hover {
-    background: #4338ca !important;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(99,102,241,0.4) !important;
+    background: #334155 !important;
+    border-color: #6366f1 !important;
+    color: white !important;
 }
 
 /* ── Tabs ── */
 .stTabs [data-baseweb="tab-list"] {
-    gap: 4px;
+    gap: 2px;
     background: #f1f5f9;
-    border-radius: 12px;
-    padding: 4px;
+    border-radius: 10px;
+    padding: 3px;
+    border-bottom: none !important;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.04);
 }
 .stTabs [data-baseweb="tab"] {
-    border-radius: 8px !important;
+    border-radius: 7px !important;
     font-weight: 500 !important;
-    font-size: 14px !important;
-    padding: 6px 16px !important;
+    font-size: 13px !important;
+    padding: 5px 13px !important;
     color: #64748b !important;
+    border: none !important;
+    background: transparent !important;
 }
 .stTabs [aria-selected="true"] {
     background: white !important;
     color: #1e293b !important;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.12) !important;
+    font-weight: 600 !important;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.1) !important;
 }
-.stTabs [data-baseweb="tab-highlight"] { background: transparent !important; }
+.stTabs [data-baseweb="tab-highlight"],
+.stTabs [data-baseweb="tab-border"] {
+    background: transparent !important;
+    display: none !important;
+}
 
 /* ── Buttons ── */
 .stButton > button {
     border-radius: 8px !important;
     font-weight: 500 !important;
-    transition: all 0.15s ease !important;
+    font-size: 13px !important;
+    padding: 5px 10px !important;
+    transition: all 0.12s ease !important;
+    line-height: 1.4 !important;
 }
-.stButton > button:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+.stButton > button[kind="primary"] {
+    background: #6366f1 !important;
+    border-color: #6366f1 !important;
+    color: white !important;
+}
+.stButton > button[kind="primary"]:hover {
+    background: #4f46e5 !important;
+    border-color: #4f46e5 !important;
+    box-shadow: 0 4px 12px rgba(99,102,241,0.35) !important;
+    transform: translateY(-1px) !important;
+}
+.stButton > button[kind="secondary"] {
+    background: white !important;
+    border: 1.5px solid #e2e8f0 !important;
+    color: #475569 !important;
+}
+.stButton > button[kind="secondary"]:hover {
+    border-color: #a5b4fc !important;
+    color: #6366f1 !important;
+    background: #fafbff !important;
+    transform: translateY(-1px) !important;
+}
+.stButton > button:focus { box-shadow: none !important; outline: none !important; }
+
+/* ── Text input ── */
+.stTextInput > div > div > input {
+    border-radius: 9px !important;
+    border: 1.5px solid #e2e8f0 !important;
+    padding: 9px 13px !important;
+    font-size: 14px !important;
+    background: #fafafa !important;
+    color: #0f172a !important;
+    transition: all 0.12s ease !important;
+    font-family: 'Inter', sans-serif !important;
+}
+.stTextInput > div > div > input::placeholder { color: #94a3b8 !important; }
+.stTextInput > div > div > input:focus {
+    border-color: #6366f1 !important;
+    box-shadow: 0 0 0 3px rgba(99,102,241,0.08) !important;
+    background: white !important;
 }
 
-/* ── Data editor ── */
-[data-testid="stDataEditor"] {
+/* ── Textarea ── */
+.stTextArea > div > div > textarea {
+    border-radius: 8px !important;
+    border: 1.5px solid #e2e8f0 !important;
+    font-size: 13px !important;
+    line-height: 1.6 !important;
+    color: #1e293b !important;
+    font-family: 'Inter', sans-serif !important;
+    transition: border-color 0.12s ease !important;
+}
+.stTextArea > div > div > textarea:focus {
+    border-color: #6366f1 !important;
+    box-shadow: 0 0 0 3px rgba(99,102,241,0.08) !important;
+}
+
+/* ── Job card shell (via stVerticalBlockBorderWrapper) ── */
+[data-testid="stVerticalBlockBorderWrapper"] {
     border-radius: 12px !important;
-    overflow: hidden;
-    border: 1px solid #e2e8f0 !important;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.06) !important;
+    border: 1.5px solid #e2e8f0 !important;
+    padding: 0 !important;
+    margin-bottom: 6px !important;
+    transition: border-color 0.12s ease, box-shadow 0.12s ease !important;
+    background: white !important;
+    overflow: hidden !important;
+}
+[data-testid="stVerticalBlockBorderWrapper"]:hover {
+    border-color: #a5b4fc !important;
+    box-shadow: 0 2px 14px rgba(99,102,241,0.09) !important;
+}
+
+/* ── KPI cards ── */
+.kpi-card {
+    background: white;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 14px;
+    padding: 16px 18px 14px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    height: 100%;
+    transition: box-shadow 0.12s ease, transform 0.12s ease;
+}
+.kpi-card:hover {
+    box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+    transform: translateY(-1px);
+}
+
+/* ── Detail panel ── */
+.detail-panel {
+    background: white;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 14px;
+    padding: 20px 22px;
+    position: sticky;
+    top: 16px;
+    max-height: calc(100vh - 60px);
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #e2e8f0 transparent;
+}
+.detail-panel::-webkit-scrollbar { width: 4px; }
+.detail-panel::-webkit-scrollbar-track { background: transparent; }
+.detail-panel::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 4px; }
+
+/* ── Skill tags ── */
+.skill-tag {
+    display: inline-block;
+    padding: 3px 9px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    margin: 2px 2px 2px 0;
+}
+
+/* ── Section label ── */
+.section-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin: 14px 0 6px;
+}
+
+/* ── Reason card ── */
+.reason-card {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 12px 14px;
+    font-size: 13px;
+    color: #1e293b;
+    line-height: 1.65;
 }
 
 /* ── Expander ── */
 [data-testid="stExpander"] {
-    border: 1px solid #e2e8f0 !important;
-    border-radius: 10px !important;
-    overflow: hidden;
-}
-
-/* ── Text input / search ── */
-.stTextInput > div > div > input {
-    border-radius: 10px !important;
     border: 1.5px solid #e2e8f0 !important;
-    padding: 10px 14px !important;
-    font-size: 14px !important;
-    transition: border-color 0.15s ease !important;
-}
-.stTextInput > div > div > input:focus {
-    border-color: #6366f1 !important;
-    box-shadow: 0 0 0 3px rgba(99,102,241,0.1) !important;
+    border-radius: 10px !important;
+    overflow: hidden !important;
+    background: white !important;
 }
 
-/* ── Selectbox ── */
-.stSelectbox > div > div {
-    border-radius: 10px !important;
+/* ── Link button ── */
+[data-testid="stLinkButton"] > a {
+    border-radius: 8px !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    transition: all 0.12s ease !important;
 }
 
 /* ── Toast ── */
 [data-testid="stToast"] {
     border-radius: 10px !important;
     font-weight: 500 !important;
+    font-size: 13px !important;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12) !important;
+}
+
+/* ── Selectbox ── */
+.stSelectbox > div > div {
+    border-radius: 8px !important;
+    font-size: 13px !important;
+    transition: border-color 0.12s !important;
+}
+
+/* ── Alert/info ── */
+[data-testid="stAlert"] {
+    border-radius: 10px !important;
+    font-size: 13px !important;
+}
+
+/* ── Progress bar ── */
+.prog-track {
+    background: #f1f5f9;
+    border-radius: 8px;
+    height: 5px;
+    overflow: hidden;
+    margin: 14px 0 3px;
+}
+.prog-fill {
+    height: 100%;
+    border-radius: 8px;
+    background: linear-gradient(90deg, #6366f1, #a78bfa);
+    transition: width 0.4s ease;
 }
 </style>
 """
 
-# ─── Reusable HTML components ─────────────────────────────────────────────────
+
+# ─── HTML component functions ──────────────────────────────────────────────────
 
 def kpi_card_html(icon: str, label: str, value: int | str, color: str, sub: str = "") -> str:
+    sub_html = f'<div style="font-size:11px;color:#94a3b8;margin-top:3px;font-weight:400">{sub}</div>' if sub else ""
     return f"""
-    <div style="
-        background: white;
-        border: 1px solid #e2e8f0;
-        border-radius: 14px;
-        padding: 18px 20px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-        border-top: 3px solid {color};
-        height: 100%;
-    ">
-        <div style="font-size:22px; margin-bottom:6px">{icon}</div>
-        <div style="font-size:28px; font-weight:800; color:{color}; line-height:1">{value}</div>
-        <div style="font-size:12px; color:#64748b; font-weight:500; margin-top:4px; text-transform:uppercase; letter-spacing:0.5px">{label}</div>
-        {"<div style='font-size:11px; color:#94a3b8; margin-top:2px'>" + sub + "</div>" if sub else ""}
+    <div class="kpi-card" style="border-top:3px solid {color}">
+        <div style="font-size:20px;margin-bottom:6px">{icon}</div>
+        <div style="font-size:26px;font-weight:800;color:{color};line-height:1;letter-spacing:-0.5px">{value}</div>
+        <div style="font-size:11px;color:#64748b;font-weight:600;margin-top:5px;text-transform:uppercase;letter-spacing:0.5px">{label}</div>
+        {sub_html}
     </div>"""
 
 
 def score_badge_html(score: int) -> str:
-    if score >= 9:   color, bg = "#15803d", "#dcfce7"
-    elif score >= 7: color, bg = "#1d4ed8", "#dbeafe"
-    elif score >= 5: color, bg = "#b45309", "#fef3c7"
-    else:            color, bg = "#b91c1c", "#fee2e2"
+    if score >= 9:   c, bg = "#15803d", "#dcfce7"
+    elif score >= 7: c, bg = "#1d4ed8", "#dbeafe"
+    elif score >= 5: c, bg = "#b45309", "#fef3c7"
+    else:            c, bg = "#b91c1c", "#fee2e2"
     return (
-        f'<span style="background:{bg};color:{color};padding:3px 10px;'
+        f'<span style="background:{bg};color:{c};padding:3px 10px;'
         f'border-radius:20px;font-size:12px;font-weight:700">{score}/10</span>'
     )
 
@@ -376,7 +521,7 @@ def score_badge_html(score: int) -> str:
 def status_pill_html(status: str) -> str:
     m = STATUS_META.get(status, STATUS_META["Not Reviewed"])
     return (
-        f'<span style="background:{m["color"]}18;color:{m["color"]};padding:3px 10px;'
+        f'<span style="background:{m["color"]}18;color:{m["color"]};padding:3px 9px;'
         f'border-radius:20px;font-size:12px;font-weight:600;border:1px solid {m["color"]}40">'
         f'{m["icon"]} {status}</span>'
     )
@@ -384,18 +529,229 @@ def status_pill_html(status: str) -> str:
 
 def skill_tag_html(skill: str, color: str = "#6366f1", bg: str = "#eef2ff") -> str:
     return (
-        f'<span style="background:{bg};color:{color};padding:2px 8px;'
-        f'border-radius:6px;font-size:12px;font-weight:500;margin:2px;display:inline-block">'
-        f'{skill}</span>'
+        f'<span class="skill-tag" style="background:{bg};color:{color}">{skill}</span>'
+    )
+
+
+def relevancy_tag_html(relevancy: str) -> str:
+    c, bg = RELEVANCY_COLORS.get((relevancy or "").upper(), ("#6b7280", "#f3f4f6"))
+    return (
+        f'<span style="background:{bg};color:{c};padding:2px 7px;border-radius:5px;'
+        f'font-size:10px;font-weight:700;letter-spacing:0.3px">{relevancy}</span>'
     )
 
 
 def section_header(title: str) -> None:
-    st.markdown(
-        f'<div style="font-size:13px;font-weight:700;color:#64748b;'
-        f'text-transform:uppercase;letter-spacing:0.8px;margin:8px 0 6px">{title}</div>',
-        unsafe_allow_html=True,
+    st.markdown(f'<div class="section-label">{title}</div>', unsafe_allow_html=True)
+
+
+# ─── Card renderer ─────────────────────────────────────────────────────────────
+
+def render_job_card(row: pd.Series, user: str, cache_key: str, is_selected: bool, tab_key: str = "") -> None:
+    """Render a single job as a card with inline quick-action buttons."""
+    score  = int(row["score"])
+    status = row["status"]
+    job_id = row["job_id"]
+    m      = STATUS_META.get(status, STATUS_META["Not Reviewed"])
+
+    if score >= 9:   sc, sbg = "#15803d", "#dcfce7"
+    elif score >= 7: sc, sbg = "#1d4ed8", "#dbeafe"
+    elif score >= 5: sc, sbg = "#b45309", "#fef3c7"
+    else:            sc, sbg = "#b91c1c", "#fee2e2"
+
+    relevancy = str(row.get("relevancy", "") or "")
+    rel_html  = relevancy_tag_html(relevancy) if relevancy else ""
+
+    # Left border accent for selected card
+    accent = "border-left:3px solid #6366f1 !important;" if is_selected else ""
+
+    with st.container(border=True):
+        # Card body — non-interactive, pure HTML
+        st.markdown(f"""
+        <div style="padding:4px 6px 6px;{accent}">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+                <div style="flex:1;min-width:0;overflow:hidden">
+                    <div style="font-size:15px;font-weight:700;color:#0f172a;
+                        white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+                        letter-spacing:-0.2px">{row['company']}</div>
+                    <div style="font-size:13px;color:#475569;margin-top:2px;
+                        white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{row['title']}</div>
+                </div>
+                <div style="display:flex;flex-direction:column;align-items:flex-end;
+                    gap:4px;flex-shrink:0">
+                    <span style="background:{sbg};color:{sc};padding:3px 9px;
+                        border-radius:20px;font-size:11px;font-weight:700">{score}/10</span>
+                    <span style="background:{m['color']}18;color:{m['color']};
+                        border:1px solid {m['color']}40;padding:2px 7px;
+                        border-radius:20px;font-size:10px;font-weight:600">{m['icon']} {status}</span>
+                </div>
+            </div>
+            <div style="margin-top:8px;font-size:11px;color:#94a3b8;
+                display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+                {rel_html}
+                {'<span style="color:#e2e8f0">·</span>' if rel_html else ''}
+                <span style="font-weight:500;color:#64748b">{row['source']}</span>
+                <span style="color:#e2e8f0">·</span>
+                <span>{row['found_date']}</span>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        # Quick-action row: 5 status buttons + Details
+        b1, b2, b3, b4, b5, bdet = st.columns([1, 1, 1, 1, 1, 1.6])
+        for (s_opt, icon), col in zip(
+            [("Interested", "⭐"), ("Applied", "✅"),
+             ("Skipped", "⏭️"), ("Not Reviewed", "🔵"), ("Rejected", "❌")],
+            [b1, b2, b3, b4, b5],
+        ):
+            with col:
+                is_cur = status == s_opt
+                if st.button(
+                    icon,
+                    key=f"q_{tab_key}_{job_id}_{s_opt}",
+                    use_container_width=True,
+                    type="primary" if is_cur else "secondary",
+                    help=s_opt,
+                ):
+                    upsert_status(user, job_id, s_opt)
+                    mask = st.session_state[cache_key]["job_id"] == job_id
+                    st.session_state[cache_key].loc[mask, "status"] = s_opt
+                    st.toast(f"{icon} Marked as {s_opt}", icon=icon)
+                    st.rerun()
+        with bdet:
+            if st.button("Details →", key=f"det_{tab_key}_{job_id}", use_container_width=True):
+                st.session_state.detail_job_id = job_id
+                st.rerun()
+
+
+# ─── Detail panel renderer ─────────────────────────────────────────────────────
+
+def render_detail_panel(df_view: pd.DataFrame, user: str, cache_key: str) -> None:
+    """Render the sticky right-side detail view for the selected job."""
+    job_id = st.session_state.get("detail_job_id")
+
+    if not job_id or df_view[df_view["job_id"] == job_id].empty:
+        st.markdown("""
+        <div class="detail-panel">
+            <div style="text-align:center;padding:60px 0;color:#94a3b8">
+                <div style="font-size:32px;margin-bottom:10px">←</div>
+                <div style="font-size:14px;font-weight:500">Select a job to see details</div>
+                <div style="font-size:12px;margin-top:4px">Click "Details →" on any card</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        return
+
+    row       = df_view[df_view["job_id"] == job_id].iloc[0]
+    scorecard = get_scorecard(user, job_id)
+    gap       = get_gap(user, job_id)
+    jd_text   = get_jd(user, job_id)
+
+    score   = scorecard.get("score", row["score"]) if scorecard else row["score"]
+    urgency = scorecard.get("urgency", "") if scorecard else ""
+    url     = scorecard.get("url", row["url"]) if scorecard else row["url"]
+
+    # ── Header ──
+    st.markdown(f"""
+    <div style="margin-bottom:14px">
+        <div style="font-size:18px;font-weight:800;color:#0f172a;letter-spacing:-0.4px;line-height:1.2">{row['company']}</div>
+        <div style="font-size:13px;color:#475569;margin-top:3px;font-weight:400">{row['title']}</div>
+        <div style="margin-top:10px;display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+            {score_badge_html(int(score))}
+            {status_pill_html(row['status'])}
+            {('<span style="background:#fef2f2;color:#ef4444;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700">🔥 ' + urgency + '</span>') if urgency else ''}
+        </div>
+        {('<div style="margin-top:10px"><a href="' + url + '" target="_blank" style="font-size:13px;color:#6366f1;font-weight:600;text-decoration:none">View Job ↗</a></div>') if url else ''}
+    </div>
+    <hr style="border:none;border-top:1px solid #f1f5f9;margin:0 0 4px">
+    """, unsafe_allow_html=True)
+
+    # ── Quick status update ──
+    section_header("Update status")
+    btn_cols = st.columns(len(STATUS_OPTIONS))
+    for s_opt, col in zip(STATUS_OPTIONS, btn_cols):
+        m = STATUS_META[s_opt]
+        is_cur = row["status"] == s_opt
+        with col:
+            if st.button(
+                m["icon"],
+                key=f"panel_q_{job_id}_{s_opt}",
+                type="primary" if is_cur else "secondary",
+                use_container_width=True,
+                help=s_opt,
+            ):
+                upsert_status(user, job_id, s_opt)
+                mask = st.session_state[cache_key]["job_id"] == job_id
+                st.session_state[cache_key].loc[mask, "status"] = s_opt
+                st.toast(f"{m['icon']} {s_opt}", icon=m["icon"])
+                st.rerun()
+
+    # ── Why this match ──
+    if scorecard and scorecard.get("reason"):
+        section_header("Why this match")
+        st.markdown(
+            f'<div class="reason-card">{scorecard["reason"]}</div>',
+            unsafe_allow_html=True,
+        )
+
+    # ── Skills you have ──
+    req_miss  = scorecard.get("required_skills_missing",  []) if scorecard else []
+    pref_miss = scorecard.get("preferred_skills_missing", []) if scorecard else []
+
+    if gap:
+        has_req  = gap.get("candidate_has_required",  [])
+        miss_req = gap.get("candidate_missing_required", [])
+        has_pref = gap.get("candidate_has_preferred",  [])
+
+        if has_req:
+            section_header("✅ You already have")
+            st.markdown(
+                "".join(skill_tag_html(s, "#15803d", "#dcfce7") for s in has_req),
+                unsafe_allow_html=True,
+            )
+        if miss_req:
+            section_header("❌ Gaps to close")
+            st.markdown(
+                "".join(skill_tag_html(s, "#b91c1c", "#fee2e2") for s in miss_req),
+                unsafe_allow_html=True,
+            )
+        if has_pref:
+            section_header("⭐ Bonus skills you have")
+            st.markdown(
+                "".join(skill_tag_html(s, "#6366f1", "#eef2ff") for s in has_pref),
+                unsafe_allow_html=True,
+            )
+    elif req_miss or pref_miss:
+        section_header("Skills to build")
+        html = "".join(skill_tag_html(s, "#b91c1c", "#fee2e2") for s in req_miss)
+        html += "".join(skill_tag_html(s, "#b45309", "#fef3c7") for s in pref_miss[:5])
+        st.markdown(html, unsafe_allow_html=True)
+
+    # ── Notes ──
+    section_header("Your notes")
+    current_notes = str(row["notes"]) if row["notes"] else ""
+    new_notes = st.text_area(
+        "Notes",
+        value=current_notes,
+        placeholder="Interview notes, referral contacts, follow-up dates…",
+        height=90,
+        label_visibility="collapsed",
+        key=f"notes_{job_id}",
     )
+    if new_notes != current_notes:
+        upsert_status(user, job_id, row["status"], new_notes)
+        mask = st.session_state[cache_key]["job_id"] == job_id
+        st.session_state[cache_key].loc[mask, "notes"] = new_notes
+        st.toast("Notes saved ✓", icon="💾")
+
+    # ── JD preview ──
+    if jd_text:
+        st.markdown('<div style="height:6px"></div>', unsafe_allow_html=True)
+        with st.expander("📄 Full job description"):
+            st.markdown(
+                f'<div style="font-size:12px;color:#475569;line-height:1.75;white-space:pre-wrap">{jd_text}</div>',
+                unsafe_allow_html=True,
+            )
 
 
 # ─── Page setup ───────────────────────────────────────────────────────────────
@@ -417,7 +773,6 @@ if "authenticated_user" not in st.session_state:
 user    = st.session_state.authenticated_user
 profile = get_profile(user)
 
-# Safety check — user must have pipeline data
 if not (DATA_ROOT / user / "dossier.db").exists():
     st.warning(
         f"No pipeline data for **{user}** yet.\n\n"
@@ -433,28 +788,31 @@ if not (DATA_ROOT / user / "dossier.db").exists():
 
 with st.sidebar:
     st.markdown(
-        '<div style="font-size:22px;font-weight:800;letter-spacing:-0.5px;padding:4px 0 2px">'
+        '<div style="font-size:22px;font-weight:800;letter-spacing:-0.6px;padding:4px 0 2px">'
         '🎯 Dossier</div>'
-        '<div style="font-size:11px;color:#94a3b8;margin-bottom:12px">Job Intelligence Portal</div>',
+        '<div style="font-size:11px;color:#64748b;margin-bottom:10px;font-weight:500">Job Intelligence Portal</div>',
         unsafe_allow_html=True,
     )
-    st.markdown("<hr style='border-color:#1e293b;margin:4px 0 12px'>", unsafe_allow_html=True)
+    st.markdown("<hr style='border-color:rgba(255,255,255,0.07);margin:4px 0 12px'>", unsafe_allow_html=True)
 
     if profile:
         identity = profile.get("identity", {})
+        initials = "".join(w[0].upper() for w in identity.get("name", user).split()[:2])
         st.markdown(
-            f'<div style="background:#1e293b;border-radius:10px;padding:12px 14px;margin:8px 0">'
-            f'<div style="font-size:15px;font-weight:700">{identity.get("name", user)}</div>'
-            f'<div style="font-size:12px;color:#94a3b8;margin-top:2px">'
-            f'{identity.get("current_role","")}</div>'
-            f'<div style="font-size:12px;color:#94a3b8">'
-            f'{identity.get("current_company","")} · {identity.get("location","")}</div>'
+            f'<div style="background:#1e293b;border-radius:10px;padding:12px 14px;margin:6px 0 12px">'
+            f'<div style="display:flex;align-items:center;gap:10px">'
+            f'<div style="width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6);'
+            f'display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:white;flex-shrink:0">{initials}</div>'
+            f'<div>'
+            f'<div style="font-size:14px;font-weight:700;color:#f1f5f9">{identity.get("name", user)}</div>'
+            f'<div style="font-size:11px;color:#64748b;margin-top:1px">{identity.get("current_role","")}</div>'
+            f'<div style="font-size:11px;color:#64748b">{identity.get("current_company","")} · {identity.get("location","")}</div>'
+            f'</div></div>'
             f'</div>',
             unsafe_allow_html=True,
         )
 
-    st.markdown("<hr style='border-color:#1e293b;margin:12px 0'>", unsafe_allow_html=True)
-    st.markdown('<div style="font-size:12px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:8px">Filters</div>', unsafe_allow_html=True)
+    st.markdown('<div style="font-size:11px;font-weight:600;color:#475569;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:8px">Filters</div>', unsafe_allow_html=True)
 
     min_score = st.slider("Minimum score", 1, 10, 5, label_visibility="visible")
 
@@ -465,7 +823,7 @@ with st.sidebar:
     else:
         source_filter = []
 
-    st.markdown("<hr style='border-color:#1e293b;margin:12px 0'>", unsafe_allow_html=True)
+    st.markdown("<hr style='border-color:rgba(255,255,255,0.07);margin:12px 0'>", unsafe_allow_html=True)
 
     col_r1, col_r2 = st.columns(2)
     with col_r1:
@@ -479,8 +837,8 @@ with st.sidebar:
             del st.session_state.authenticated_user
             st.rerun()
 
-    st.markdown("<hr style='border-color:#1e293b;margin:12px 0'>", unsafe_allow_html=True)
-    st.markdown('<div style="font-size:12px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:6px">Share this portal</div>', unsafe_allow_html=True)
+    st.markdown("<hr style='border-color:rgba(255,255,255,0.07);margin:12px 0'>", unsafe_allow_html=True)
+    st.markdown('<div style="font-size:11px;font-weight:600;color:#475569;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:6px">Share portal</div>', unsafe_allow_html=True)
     st.code("ngrok http 8501", language="bash")
     st.caption("Run above → copy HTTPS URL → send via WhatsApp 💬")
 
@@ -495,28 +853,24 @@ if cache_key not in st.session_state:
 df_all = st.session_state[cache_key].copy()
 
 if df_all.empty:
-    st.warning(
-        f"⚠️ No jobs found for **{user}**. "
-        f"Run: `python run_dossier.py --user {user}`"
-    )
+    st.warning(f"⚠️ No jobs for **{user}**. Run: `python run_dossier.py --user {user}`")
     st.stop()
 
-# Source filter
 if source_filter:
     df_all = df_all[df_all["source"].isin(source_filter)].reset_index(drop=True)
 
 
 # ─── Header ───────────────────────────────────────────────────────────────────
 
-name = profile["identity"]["name"] if profile else user.capitalize()
+name         = profile["identity"]["name"] if profile else user.capitalize()
 target_roles = ", ".join(profile["target"]["roles"][:3]) if profile else ""
 
 st.markdown(
-    f'<div style="margin-bottom:20px">'
-    f'<h1 style="font-size:28px;font-weight:800;color:#0f172a;margin:0;letter-spacing:-0.5px">'
+    f'<div style="margin-bottom:18px">'
+    f'<h1 style="font-size:26px;font-weight:800;color:#0f172a;margin:0;letter-spacing:-0.6px">'
     f'Welcome back, {name.split()[0]} 👋</h1>'
-    f'<div style="color:#64748b;font-size:14px;margin-top:4px">'
-    f'Targeting: {target_roles} · Scores ≥ {min_score}/10</div>'
+    f'<div style="color:#64748b;font-size:13px;margin-top:4px;font-weight:400">'
+    f'Targeting {target_roles} · Scores ≥ {min_score}/10</div>'
     f'</div>',
     unsafe_allow_html=True,
 )
@@ -529,41 +883,35 @@ high_score   = len(df_all[df_all["score"] >= 8])
 not_reviewed = len(df_all[df_all["status"] == "Not Reviewed"])
 interested   = len(df_all[df_all["status"] == "Interested"])
 applied      = len(df_all[df_all["status"] == "Applied"])
-
-review_pct = int(100 * (total - not_reviewed) / total) if total else 0
+review_pct   = int(100 * (total - not_reviewed) / total) if total else 0
 
 c1, c2, c3, c4, c5 = st.columns(5)
-with c1: st.markdown(kpi_card_html("📋", "Total Jobs", total, "#6b7280"), unsafe_allow_html=True)
-with c2: st.markdown(kpi_card_html("🏆", "High Match", high_score, "#22c55e", "Score ≥ 8"), unsafe_allow_html=True)
-with c3: st.markdown(kpi_card_html("⭐", "Interested", interested, "#3b82f6"), unsafe_allow_html=True)
-with c4: st.markdown(kpi_card_html("✅", "Applied", applied, "#8b5cf6"), unsafe_allow_html=True)
-with c5: st.markdown(kpi_card_html("🔵", "To Review", not_reviewed, "#f59e0b", f"{review_pct}% done"), unsafe_allow_html=True)
+with c1: st.markdown(kpi_card_html("📋", "Total Jobs",  total,        "#6b7280"), unsafe_allow_html=True)
+with c2: st.markdown(kpi_card_html("🏆", "High Match",  high_score,   "#22c55e", "Score ≥ 8"), unsafe_allow_html=True)
+with c3: st.markdown(kpi_card_html("⭐", "Interested",  interested,   "#3b82f6"), unsafe_allow_html=True)
+with c4: st.markdown(kpi_card_html("✅", "Applied",     applied,      "#8b5cf6"), unsafe_allow_html=True)
+with c5: st.markdown(kpi_card_html("🔵", "To Review",   not_reviewed, "#f59e0b", f"{review_pct}% done"), unsafe_allow_html=True)
 
-# Review progress bar
 if total:
-    progress_html = f"""
-    <div style="margin: 16px 0 4px; background:#f1f5f9; border-radius:8px; height:6px; overflow:hidden">
-        <div style="width:{review_pct}%; background:linear-gradient(90deg,#6366f1,#8b5cf6);
-        height:100%; border-radius:8px; transition:width 0.3s ease"></div>
-    </div>
-    <div style="font-size:11px; color:#94a3b8; text-align:right">{review_pct}% reviewed</div>
-    """
-    st.markdown(progress_html, unsafe_allow_html=True)
+    st.markdown(
+        f'<div class="prog-track"><div class="prog-fill" style="width:{review_pct}%"></div></div>'
+        f'<div style="font-size:11px;color:#94a3b8;text-align:right;margin-bottom:4px">{review_pct}% reviewed</div>',
+        unsafe_allow_html=True,
+    )
 
-st.markdown("<br>", unsafe_allow_html=True)
+st.markdown('<div style="height:10px"></div>', unsafe_allow_html=True)
 
 
-# ─── Search + Tabs ────────────────────────────────────────────────────────────
+# ─── Search ───────────────────────────────────────────────────────────────────
 
 search_col, _ = st.columns([2, 3])
 with search_col:
     search_query = st.text_input(
         "Search",
-        placeholder="🔍  Search company or job title…",
+        placeholder="🔍  Search company or role…",
         label_visibility="collapsed",
     )
 
-# Apply search
 df_view = df_all.copy()
 if search_query:
     mask = (
@@ -572,212 +920,61 @@ if search_query:
     )
     df_view = df_view[mask].reset_index(drop=True)
 
-# Tab-based status filter
-tab_labels = list(TAB_FILTERS.keys())
-tabs = st.tabs(tab_labels)
-
-for tab_label, tab_obj in zip(tab_labels, tabs):
-    with tab_obj:
-        status_val = TAB_FILTERS[tab_label]
-        df_tab = df_view.copy() if status_val is None else df_view[df_view["status"] == status_val].copy()
-        df_tab = df_tab.reset_index(drop=True)
-
-        if df_tab.empty:
-            st.markdown(
-                '<div style="text-align:center;padding:40px;color:#94a3b8;">'
-                '<div style="font-size:32px;margin-bottom:8px">🎉</div>'
-                '<div style="font-size:14px">No jobs here</div></div>',
-                unsafe_allow_html=True,
-            )
-            continue
-
-        st.markdown(
-            f'<div style="font-size:13px;color:#64748b;margin:8px 0 4px">'
-            f'<b>{len(df_tab)}</b> jobs — edit Status and Notes inline, saves automatically</div>',
-            unsafe_allow_html=True,
-        )
-
-        # job_id hidden via column_order
-        edited = st.data_editor(
-            df_tab[[
-                "job_id", "company", "title", "score",
-                "relevancy", "source", "found_date", "status", "notes", "url",
-            ]],
-            column_order=["company", "title", "score", "relevancy", "source", "found_date", "status", "notes", "url"],
-            column_config={
-                "company":    st.column_config.TextColumn("Company",  width="medium"),
-                "title":      st.column_config.TextColumn("Role",     width="large"),
-                "score":      st.column_config.NumberColumn("Match",  min_value=0, max_value=10, format="%d ⭐", width="small"),
-                "relevancy":  st.column_config.TextColumn("Tier",     width="small"),
-                "source":     st.column_config.TextColumn("Via",      width="small"),
-                "found_date": st.column_config.TextColumn("Found",    width="small"),
-                "status":     st.column_config.SelectboxColumn(
-                                  "Status", options=STATUS_OPTIONS, required=True, width="medium"
-                              ),
-                "notes":      st.column_config.TextColumn("Notes",    width="large"),
-                "url":        st.column_config.LinkColumn("Link",     width="small", display_text="View ↗"),
-            },
-            disabled=["company", "title", "score", "relevancy", "source", "found_date", "url"],
-            hide_index=True,
-            use_container_width=True,
-            height=min(80 + 45 * len(df_tab), 480),
-            key=f"editor_{user}_{min_score}_{tab_label}",
-        )
-
-        # Detect + save changes
-        orig = df_tab[["status", "notes"]]
-        edtd = edited[["status", "notes"]]
-        mask = ~orig.eq(edtd).all(axis=1)
-        if mask.any():
-            changed = edited[mask][["job_id", "status", "notes"]]
-            bulk_save(user, changed)
-            for _, r in changed.iterrows():
-                idx = st.session_state[cache_key]["job_id"] == r["job_id"]
-                st.session_state[cache_key].loc[idx, "status"] = r["status"]
-                st.session_state[cache_key].loc[idx, "notes"]  = r["notes"]
-            st.toast(f"Saved {mask.sum()} update(s) ✓", icon="✅")
-
-
-# ─── Job detail panel ─────────────────────────────────────────────────────────
-
-st.markdown("<br>", unsafe_allow_html=True)
-st.markdown(
-    '<div style="font-size:20px;font-weight:700;color:#0f172a;margin-bottom:12px">Job Details</div>',
-    unsafe_allow_html=True,
-)
-
-if df_view.empty:
-    st.info("No jobs match your search or filters.")
+# Default selected job — first in view (or preserve existing if still visible)
+existing = st.session_state.get("detail_job_id")
+if not df_view.empty:
+    visible_ids = set(df_view["job_id"].tolist())
+    if existing not in visible_ids:
+        st.session_state.detail_job_id = df_view.iloc[0]["job_id"]
 else:
-    # Dropdown with rich labels
-    detail_labels = df_view.apply(
-        lambda r: f"{r['company']}  —  {r['title']}  ·  {r['score']}/10  [{r['status']}]", axis=1
-    ).tolist()
-    selected_label  = st.selectbox("Select job", detail_labels, label_visibility="collapsed", key=f"detail_{user}")
-    selected_idx    = detail_labels.index(selected_label)
-    selected_row    = df_view.iloc[selected_idx]
-    job_id          = selected_row["job_id"]
+    st.session_state.detail_job_id = None
 
-    scorecard = get_scorecard(user, job_id)
-    gap       = get_gap(user, job_id)
-    jd_text   = get_jd(user, job_id)
 
-    # Job meta bar
-    score   = scorecard.get("score", selected_row["score"]) if scorecard else selected_row["score"]
-    urgency = scorecard.get("urgency", "") if scorecard else ""
-    url     = scorecard.get("url", selected_row["url"]) if scorecard else selected_row["url"]
+# ─── Two-panel layout ─────────────────────────────────────────────────────────
 
-    meta_pills = score_badge_html(int(score))
-    if urgency:
-        urg_c = {"HIGH": "#ef4444", "MEDIUM": "#f59e0b"}.get(urgency, "#6b7280")
-        meta_pills += f'&nbsp;{skill_tag_html(f"🔥 {urgency}", urg_c, urg_c + "18")}'
-    meta_pills += f'&nbsp;{status_pill_html(selected_row["status"])}'
-    if url:
-        meta_pills += f'&nbsp;&nbsp;<a href="{url}" target="_blank" style="font-size:13px;color:#6366f1;font-weight:500;text-decoration:none">View Job ↗</a>'
+list_col, detail_col = st.columns([11, 9], gap="large")
 
-    st.markdown(
-        f'<div style="background:white;border:1px solid #e2e8f0;border-radius:14px;padding:18px 22px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,0.06)">'
-        f'<div style="font-size:18px;font-weight:700;color:#0f172a">{selected_row["company"]}</div>'
-        f'<div style="font-size:15px;color:#475569;margin:2px 0 10px">{selected_row["title"]}</div>'
-        f'{meta_pills}'
-        f'</div>',
-        unsafe_allow_html=True,
-    )
+with list_col:
+    tab_labels = list(TAB_FILTERS.keys())
+    tabs       = st.tabs(tab_labels)
 
-    # Quick status buttons
-    st.markdown('<div style="font-size:12px;color:#64748b;font-weight:600;margin-bottom:6px">QUICK UPDATE</div>', unsafe_allow_html=True)
-    btn_cols = st.columns(len(STATUS_OPTIONS))
-    for i, (status_opt, btn_col) in enumerate(zip(STATUS_OPTIONS, btn_cols)):
-        m = STATUS_META[status_opt]
-        is_current = selected_row["status"] == status_opt
-        with btn_col:
-            btn_style = "primary" if is_current else "secondary"
-            if st.button(
-                f"{m['icon']} {status_opt}",
-                key=f"quick_{job_id}_{status_opt}",
-                type=btn_style,
-                use_container_width=True,
-            ):
-                upsert_status(user, job_id, status_opt)
-                idx = st.session_state[cache_key]["job_id"] == job_id
-                st.session_state[cache_key].loc[idx, "status"] = status_opt
-                st.toast(f"Marked as {status_opt} ✓", icon=m["icon"])
-                st.rerun()
+    for tab_label, tab_obj in zip(tab_labels, tabs):
+        with tab_obj:
+            status_val = TAB_FILTERS[tab_label]
+            df_tab = (
+                df_view.copy()
+                if status_val is None
+                else df_view[df_view["status"] == status_val].copy()
+            )
+            df_tab = df_tab.reset_index(drop=True)
 
-    st.markdown("<br>", unsafe_allow_html=True)
-    detail_left, detail_right = st.columns(2)
+            if df_tab.empty:
+                st.markdown(
+                    '<div style="text-align:center;padding:48px 0;color:#94a3b8">'
+                    '<div style="font-size:32px;margin-bottom:8px">🎉</div>'
+                    '<div style="font-size:14px;font-weight:500">Nothing here</div>'
+                    '<div style="font-size:12px;margin-top:4px">Try a different filter or lower the score threshold</div>'
+                    '</div>',
+                    unsafe_allow_html=True,
+                )
+                continue
 
-    with detail_left:
-        # Score reason card
-        if scorecard and scorecard.get("reason"):
+            n_total = len(df_tab)
+            df_show = df_tab.head(MAX_CARDS)
             st.markdown(
-                f'<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:16px 18px">'
-                f'<div style="font-size:12px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:8px">Why this match</div>'
-                f'<div style="font-size:14px;color:#1e293b;line-height:1.6">{scorecard["reason"]}</div>'
-                f'</div>',
+                f'<div style="font-size:12px;color:#94a3b8;margin:6px 0 10px;font-weight:500">'
+                f'{"Showing " + str(len(df_show)) + " of " if n_total > MAX_CARDS else ""}'
+                f'<b style="color:#475569">{n_total}</b> job{"s" if n_total != 1 else ""}'
+                f' — click a card\'s icon to update status</div>',
                 unsafe_allow_html=True,
             )
 
-        # Missing skills
-        req_miss  = scorecard.get("required_skills_missing", []) if scorecard else []
-        pref_miss = scorecard.get("preferred_skills_missing", []) if scorecard else []
-        if req_miss or pref_miss:
-            st.markdown("<br>", unsafe_allow_html=True)
-            section_header("Skills to build")
-            html = ""
-            for s in req_miss:
-                html += skill_tag_html(s, "#b91c1c", "#fee2e2")
-            for s in pref_miss[:5]:
-                html += skill_tag_html(s, "#b45309", "#fef3c7")
-            st.markdown(html, unsafe_allow_html=True)
+            for _, row in df_show.iterrows():
+                is_selected = row["job_id"] == st.session_state.get("detail_job_id")
+                render_job_card(row, user, cache_key, is_selected, tab_key=tab_label)
 
-    with detail_right:
-        # Gap analysis
-        if gap:
-            has_req  = gap.get("candidate_has_required", [])
-            miss_req = gap.get("candidate_missing_required", [])
-            has_pref = gap.get("candidate_has_preferred", [])
+            if n_total > MAX_CARDS:
+                st.info(f"Showing top {MAX_CARDS} of {n_total} jobs. Raise the score filter to narrow down.")
 
-            if has_req:
-                section_header("✅ You already have")
-                html = "".join(skill_tag_html(s, "#15803d", "#dcfce7") for s in has_req)
-                st.markdown(html, unsafe_allow_html=True)
-            if miss_req:
-                st.markdown("<br>", unsafe_allow_html=True)
-                section_header("❌ Gaps to address")
-                html = "".join(skill_tag_html(s, "#b91c1c", "#fee2e2") for s in miss_req)
-                st.markdown(html, unsafe_allow_html=True)
-            if has_pref:
-                st.markdown("<br>", unsafe_allow_html=True)
-                section_header("⭐ Bonus skills you have")
-                html = "".join(skill_tag_html(s, "#6366f1", "#eef2ff") for s in has_pref)
-                st.markdown(html, unsafe_allow_html=True)
-        else:
-            st.info("Run the full pipeline to get skill gap analysis for this job.")
-
-        # Notes
-        st.markdown("<br>", unsafe_allow_html=True)
-        section_header("Your notes")
-        current_notes = str(selected_row["notes"]) if selected_row["notes"] else ""
-        new_notes = st.text_area(
-            "Notes",
-            value=current_notes,
-            placeholder="Add interview notes, referral contacts, follow-up dates…",
-            height=100,
-            label_visibility="collapsed",
-            key=f"notes_{job_id}",
-        )
-        if new_notes != current_notes:
-            upsert_status(user, job_id, selected_row["status"], new_notes)
-            idx = st.session_state[cache_key]["job_id"] == job_id
-            st.session_state[cache_key].loc[idx, "notes"] = new_notes
-            st.toast("Notes saved ✓", icon="💾")
-
-    # JD preview
-    if jd_text:
-        st.markdown("<br>", unsafe_allow_html=True)
-        with st.expander("📄 Full job description"):
-            st.markdown(
-                f'<div style="font-size:13px;color:#475569;line-height:1.7;white-space:pre-wrap">{jd_text}</div>',
-                unsafe_allow_html=True,
-            )
+with detail_col:
+    render_detail_panel(df_view, user, cache_key)
