@@ -120,13 +120,31 @@ def is_india_relevant_location(location: str) -> bool:
 
 
 def is_ml_relevant_title(title: str) -> bool:
-    """
-    Return True if the job title indicates an ML/AI/Data Science role.
-    Applied to Greenhouse/Lever results which include HR, Finance etc.
-    Padded with spaces so 'ml' doesn't match 'html'.
-    """
+    """Fallback for backward compat. Prefer is_target_domain_title."""
     padded = f" {title.lower()} "
     return any(kw in padded for kw in _ML_TITLE_KEYWORDS)
+
+
+def is_target_domain_title(title: str, watchlist_keywords: list[str]) -> bool:
+    """
+    Return True if title matches any of the user's watchlist_title_keywords.
+    Falls back to ML keyword list if watchlist_keywords is empty.
+    Profile-driven — no hardcoded domain knowledge here.
+    """
+    if not watchlist_keywords:
+        return is_ml_relevant_title(title)
+    padded = f" {title.lower()} "
+    return any(kw in padded for kw in watchlist_keywords)
+
+
+def is_relevant_for_domain(company: dict, role_domain: str) -> bool:
+    """
+    Return True if this company should be included for the user's role_domain.
+    target_domains: "all" = every user, "ml_ai"/"sde"/"data" = specific domain only.
+    Companies without target_domains default to "all".
+    """
+    domains = company.get("target_domains", ["all"])
+    return "all" in domains or role_domain in domains
 
 
 # ─── LinkedIn Company ID Resolution ──────────────────────────────────────────
@@ -226,12 +244,13 @@ def resolve_linkedin_company_id(slug: str, cache: dict) -> str | None:
 
 # ─── Source Fetchers ──────────────────────────────────────────────────────────
 
-def fetch_jobs_greenhouse(company_name: str, token: str) -> list[dict]:
+def fetch_jobs_greenhouse(company_name: str, token: str, watchlist_keywords: list[str] | None = None) -> list[dict]:
     """
-    Fetch all open ML/AI jobs from a Greenhouse ATS board.
+    Fetch all open matching jobs from a Greenhouse ATS board.
     Greenhouse exposes a free public JSON API with full job descriptions.
-    Returns jobs filtered for India-relevant locations and ML/AI titles.
+    Returns jobs filtered for India-relevant locations and target-domain titles.
     """
+    watchlist_keywords = watchlist_keywords or []
     url = f"https://boards-api.greenhouse.io/v1/boards/{token}/jobs?content=true"
     try:
         resp = requests.get(url, timeout=15)
@@ -244,7 +263,7 @@ def fetch_jobs_greenhouse(company_name: str, token: str) -> list[dict]:
             title    = job.get("title", "")
             location = job.get("location", {}).get("name", "")
 
-            if not is_ml_relevant_title(title):
+            if not is_target_domain_title(title, watchlist_keywords):
                 continue
             if not is_india_relevant_location(location):
                 continue
@@ -266,7 +285,7 @@ def fetch_jobs_greenhouse(company_name: str, token: str) -> list[dict]:
                 "description": description,
             })
 
-        logger.info(f"  Greenhouse [{company_name}]: {len(jobs)} ML/AI India jobs")
+        logger.info(f"  Greenhouse [{company_name}]: {len(jobs)} matching India jobs")
         return jobs
 
     except Exception as e:
@@ -274,12 +293,13 @@ def fetch_jobs_greenhouse(company_name: str, token: str) -> list[dict]:
         return []
 
 
-def fetch_jobs_lever(company_name: str, handle: str) -> list[dict]:
+def fetch_jobs_lever(company_name: str, handle: str, watchlist_keywords: list[str] | None = None) -> list[dict]:
     """
-    Fetch all open ML/AI jobs from a Lever ATS posting board.
+    Fetch all open matching jobs from a Lever ATS posting board.
     Lever exposes a free public JSON API — no auth required.
-    Returns jobs filtered for India-relevant locations and ML/AI titles.
+    Returns jobs filtered for India-relevant locations and target-domain titles.
     """
+    watchlist_keywords = watchlist_keywords or []
     url = f"https://api.lever.co/v0/postings/{handle}?mode=json"
     try:
         resp = requests.get(url, timeout=15)
@@ -292,7 +312,7 @@ def fetch_jobs_lever(company_name: str, handle: str) -> list[dict]:
             title    = posting.get("text", "")
             location = posting.get("categories", {}).get("location", "")
 
-            if not is_ml_relevant_title(title):
+            if not is_target_domain_title(title, watchlist_keywords):
                 continue
             if not is_india_relevant_location(location):
                 continue
@@ -323,7 +343,7 @@ def fetch_jobs_lever(company_name: str, handle: str) -> list[dict]:
                 "description": description,
             })
 
-        logger.info(f"  Lever [{company_name}]: {len(jobs)} ML/AI India jobs")
+        logger.info(f"  Lever [{company_name}]: {len(jobs)} matching India jobs")
         return jobs
 
     except Exception as e:
@@ -337,13 +357,15 @@ def fetch_jobs_linkedin_company(
     company_name: str,
     company_id: str,
     location: str,
+    watchlist_keywords: list[str] | None = None,
 ) -> list[dict]:
     """
     Fetch LinkedIn jobs for a specific company using the f_C= company ID filter.
-    Empty search_term means "all jobs at this company" — we filter by ML/AI title
-    afterwards. This catches promoted/sponsored listings that keyword search misses.
+    Empty search_term means "all jobs at this company" — filtered by target-domain title.
+    This catches promoted/sponsored listings that keyword search misses.
     Rate: 50 results, 2 pages, jittered sleep between pages.
     """
+    watchlist_keywords = watchlist_keywords or []
     try:
         jobs = scrape_linkedin_jobs(
             search_term="",
@@ -356,9 +378,9 @@ def fetch_jobs_linkedin_company(
             sleep_between_pages=0.8,
             company_id=company_id,
         )
-        ml_jobs = [j for j in jobs if is_ml_relevant_title(j.get("title", ""))]
-        logger.info(f"  LinkedIn [{company_name}]: {len(ml_jobs)} ML/AI jobs (of {len(jobs)} fetched)")
-        return ml_jobs
+        matching = [j for j in jobs if is_target_domain_title(j.get("title", ""), watchlist_keywords)]
+        logger.info(f"  LinkedIn [{company_name}]: {len(matching)} matching jobs (of {len(jobs)} fetched)")
+        return matching
 
     except Exception as e:
         logger.error(f"LinkedIn company fetch failed for {company_name}: {e}")
@@ -416,8 +438,9 @@ def run(min_score: int = 5, location: str = "India") -> list:
         except (ValueError, TypeError):
             pass
 
-    role_domain  = target.get("role_domain", "ml_ai")
-    target_roles = target.get("roles", [])
+    role_domain        = target.get("role_domain", "ml_ai")
+    target_roles       = target.get("roles", [])
+    watchlist_keywords = target.get("watchlist_title_keywords", [])
 
     exp_band          = compute_experience_band(current_months, switch_months, target_roles)
     system_prompt     = build_scoring_system_prompt(exp_band, role_domain, target_roles)
@@ -426,11 +449,12 @@ def run(min_score: int = 5, location: str = "India") -> list:
 
     console.print(f"  Candidate: {profile['identity']['name']} | Band: {exp_band['band']}")
 
-    # ── Step 2: Fetch from all target companies ───────────────────────────────
-    companies         = load_target_companies()
+    # ── Step 2: Fetch from target companies relevant for this user's domain ───
+    all_companies = load_target_companies()
+    companies     = [c for c in all_companies if is_relevant_for_domain(c, role_domain)]
     n_companies       = len(companies)
     greenhouse_count  = sum(1 for c in companies if c.get("ats_type") == "greenhouse")
-    console.print(f"\n[bold]Step 2/4[/bold] — Fetching from {n_companies} target companies...")
+    console.print(f"\n[bold]Step 2/4[/bold] — Fetching from {n_companies} target companies (domain={role_domain})...")
     console.print(f"  Greenhouse: {greenhouse_count} | LinkedIn f_C=: remaining")
 
     id_cache     = _load_id_cache()
@@ -443,10 +467,10 @@ def run(min_score: int = 5, location: str = "India") -> list:
         slug      = company.get("linkedin_slug", "")
 
         if ats_type == "greenhouse" and ats_token:
-            jobs = fetch_jobs_greenhouse(name, ats_token)
+            jobs = fetch_jobs_greenhouse(name, ats_token, watchlist_keywords)
 
         elif ats_type == "lever" and ats_token:
-            jobs = fetch_jobs_lever(name, ats_token)
+            jobs = fetch_jobs_lever(name, ats_token, watchlist_keywords)
 
         else:
             # LinkedIn company-ID search for all other companies
@@ -459,7 +483,7 @@ def run(min_score: int = 5, location: str = "India") -> list:
             if not company_id:
                 continue
 
-            jobs = fetch_jobs_linkedin_company(name, company_id, location)
+            jobs = fetch_jobs_linkedin_company(name, company_id, location, watchlist_keywords)
             # Polite delay between LinkedIn company searches to avoid rate limiting
             time.sleep(1.0)
 
@@ -470,14 +494,23 @@ def run(min_score: int = 5, location: str = "India") -> list:
 
     console.print(f"  Raw jobs fetched: [bold]{len(all_raw_jobs)}[/bold]")
 
-    # ── Dedup by URL ──────────────────────────────────────────────────────────
+    # ── Dedup by URL, then by company+title ──────────────────────────────────
+    # URL dedup catches identical postings; company+title dedup catches the same
+    # role posted under two slightly different LinkedIn URLs (seen with Apple).
     seen_urls: set = set()
+    seen_keys: set = set()
     deduped: list[dict] = []
     for job in all_raw_jobs:
-        url = job.get("job_url", "")
-        if url and url not in seen_urls:
+        url   = job.get("job_url", "")
+        key   = (job.get("company", "").lower().strip(), job.get("title", "").lower().strip())
+        if url and url in seen_urls:
+            continue
+        if key[0] and key[1] and key in seen_keys:
+            continue
+        if url:
             seen_urls.add(url)
-            deduped.append(job)
+        seen_keys.add(key)
+        deduped.append(job)
 
     console.print(f"  After URL dedup: [bold]{len(deduped)}[/bold] unique jobs")
 

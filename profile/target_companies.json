@@ -1,5 +1,5 @@
 {
-  "_note": "Top 50 target companies for job discovery watchlist. All careers_url values are verified reachable (HTTP 200). scrape_method=direct means we hit careers_url directly. scrape_method=linkedin means the careers page blocks scrapers — use the linkedin_slug for company page jobs instead.",
+  "_note": "Target companies for job discovery watchlist. target_domains: 'all' = relevant for all role domains, 'ml_ai' = ML/AI users only, 'sde' = SDE/backend users only. scrape_method=direct hits careers_url; scrape_method=linkedin uses linkedin_slug; greenhouse/lever use ats_token.",
   "tiers": {
     "maang": {
       "label": "MAANG India",
@@ -32,7 +32,10 @@
       "discovered_via": "manual",
       "discovered_at": "2026-05-04",
       "has_public_openings": null,
-      "ml_relevance_reason": null
+      "ml_relevance_reason": null,
+      "target_domains": [
+        "all"
+      ]
     },
     {
       "name": "Microsoft",
@@ -47,7 +50,10 @@
       "discovered_via": "manual",
       "discovered_at": "2026-05-04",
       "has_public_openings": null,
-      "ml_relevance_reason": null
+      "ml_relevance_reason": null,
+      "target_domains": [
+        "all"
+      ]
     },
     {
       "name": "Amazon",
@@ -62,7 +68,10 @@
       "discovered_via": "manual",
       "discovered_at": "2026-05-04",
       "has_public_openings": null,
-      "ml_relevance_reason": null
+      "ml_relevance_reason": null,
+      "target_domains": [
+        "all"
+      ]
     },
     {
       "name": "Meta",
@@ -78,7 +87,10 @@
       "discovered_via": "manual",
       "discovered_at": "2026-05-04",
       "has_public_openings": null,
-      "ml_relevance_reason": null
+      "ml_relevance_reason": null,
+      "target_domains": [
+        "all"
+      ]
     },
     {
       "name": "Apple",
@@ -93,7 +105,10 @@
       "discovered_via": "manual",
       "discovered_at": "2026-05-04",
       "has_public_openings": null,
-      "ml_relevance_reason": null
+      "ml_relevance_reason": null,
+      "target_domains": [
+        "all"
+      ]
     },
     {
       "name": "Netflix",
@@ -108,7 +123,10 @@
       "discovered_via": "manual",
       "discovered_at": "2026-05-04",
       "has_public_openings": null,
-      "ml_relevance_reason": null
+      "ml_relevance_reason": null,
+      "target_domains": [
+        "all"
+      ]
     },
     {
       "name": "Uber",
@@ -123,7 +141,10 @@
       "discovered_via": "manual",
       "discovered_at": "2026-05-04",
       "has_public_openings": null,
-      "ml_relevance_reason": null
+      "ml_relevance_reason": null,
+      "target_domains": [
+        "all"
+      ]
     },
     {
       "name": "Walmart Global Tech",
@@ -138,7 +159,10 @@
       "discovered_via": "manual",
       "discovered_at": "2026-05-04",
       "has_public_openings": null,
-      "ml_relevance_reason": null
+      "ml_relevance_reason": null,
+      "target_domains": [
+        "all"
+      ]
     },
     {
       "name": "Rippling",
@@ -153,7 +177,10 @@
       "discovered_via": "manual",
       "discovered_at": "2026-05-04",
       "has_public_openings": null,
-      "ml_relevance_reason": null
+      "ml_relevance_reason": null,
+      "target_domains": [
+        "all"
+      ]
     },
     {
       "name": "Stripe",
@@ -170,7 +197,10 @@
       "discovered_via": "manual",
       "discovered_at": "2026-05-04",
       "has_public_openings": null,
-      "ml_relevance_reason": null
+      "ml_relevance_reason": null,
+      "target_domains": [
+        "all"
+      ]
     },
     {
       "name": "Atlassian",
@@ -185,7 +215,10 @@
       "discovered_via": "manual",
       "discovered_at": "2026-05-04",
       "has_public_openings": null,
-      "ml_relevance_reason": null
+      "ml_relevance_reason": null,
+      "target_domains": [
+        "all"
+      ]
     },
     {
       "name": "Adobe",
@@ -200,7 +233,10 @@
       "discovered_via": "manual",
       "discovered_at": "2026-05-04",
       "has_public_openings": null,
-      "ml_relevance_reason": null
+      "ml_relevance_reason": null,
+      "target_domains": [
+        "all"
+      ]
     },
     {
       "name": "Salesforce",
@@ -215,7 +251,10 @@
       "discovered_via": "manual",
       "discovered_at": "2026-05-04",
       "has_public_openings": null,
-      "ml_relevance_reason": null
+      "ml_relevance_reason": null,
+      "target_domains": [
+        "all"
+      ]
     },
     {
       "name": "Intuit",
@@ -230,7 +269,10 @@
       "discovered_via": "manual",
       "discovered_at": "2026-05-04",
       "has_public_openings": null,
-      "ml_relevance_reason": null
+      "ml_relevance_reason": null,
+      "target_domains": [
+        "all"
+      ]
     },
     {
       "name": "NVIDIA",
@@ -245,7 +287,10 @@
       "discovered_via": "manual",
       "discovered_at": "2026-05-04",
       "has_public_openings": null,
-      "ml_relevance_reason": null
+      "ml_relevance_reason": null,
+      "target_domains": [
+        "all"
+      ]
     },
     {
       "name": "AMD",
@@ -260,7 +305,10 @@
       "discovered_via": "manual",
       "discovered_at": "2026-05-04",
       "has_public_openings": null,
-      "ml_relevance_reason": null
+      "ml_relevance_reason": null,
+      "target_domains": [
+        "all"
+      ]
     },
     {
       "name": "Qualcomm",
@@ -275,7 +323,10 @@
       "discovered_via": "manual",
       "discovered_at": "2026-05-04",
       "has_public_openings": null,
-      "ml_relevance_reason": null
+      "ml_relevance_reason": null,
+      "target_domains": [
+        "all"
+      ]
     },
     {
       "name": "PayPal",
@@ -291,7 +342,10 @@
       "discovered_via": "manual",
       "discovered_at": "2026-05-04",
       "has_public_openings": null,
-      "ml_relevance_reason": null
+      "ml_relevance_reason": null,
+      "target_domains": [
+        "all"
+      ]
     },
     {
       "name": "Databricks",
@@ -308,7 +362,10 @@
       "discovered_via": "manual",
       "discovered_at": "2026-05-04",
       "has_public_openings": null,
-      "ml_relevance_reason": null
+      "ml_relevance_reason": null,
+      "target_domains": [
+        "all"
+      ]
     },
     {
       "name": "Airbnb",
@@ -325,7 +382,10 @@
       "discovered_via": "manual",
       "discovered_at": "2026-05-04",
       "has_public_openings": null,
-      "ml_relevance_reason": null
+      "ml_relevance_reason": null,
+      "target_domains": [
+        "all"
+      ]
     },
     {
       "name": "Booking.com",
@@ -340,7 +400,10 @@
       "discovered_via": "manual",
       "discovered_at": "2026-05-04",
       "has_public_openings": null,
-      "ml_relevance_reason": null
+      "ml_relevance_reason": null,
+      "target_domains": [
+        "all"
+      ]
     },
     {
       "name": "LinkedIn",
@@ -355,7 +418,10 @@
       "discovered_via": "manual",
       "discovered_at": "2026-05-04",
       "has_public_openings": null,
-      "ml_relevance_reason": null
+      "ml_relevance_reason": null,
+      "target_domains": [
+        "all"
+      ]
     },
     {
       "name": "Coinbase",
@@ -373,7 +439,10 @@
       "discovered_via": "manual",
       "discovered_at": "2026-05-04",
       "has_public_openings": null,
-      "ml_relevance_reason": null
+      "ml_relevance_reason": null,
+      "target_domains": [
+        "all"
+      ]
     },
     {
       "name": "Wayfair",
@@ -389,7 +458,10 @@
       "discovered_via": "manual",
       "discovered_at": "2026-05-04",
       "has_public_openings": null,
-      "ml_relevance_reason": null
+      "ml_relevance_reason": null,
+      "target_domains": [
+        "all"
+      ]
     },
     {
       "name": "Target",
@@ -404,7 +476,10 @@
       "discovered_via": "manual",
       "discovered_at": "2026-05-04",
       "has_public_openings": null,
-      "ml_relevance_reason": null
+      "ml_relevance_reason": null,
+      "target_domains": [
+        "all"
+      ]
     },
     {
       "name": "Flipkart",
@@ -419,7 +494,10 @@
       "discovered_via": "manual",
       "discovered_at": "2026-05-04",
       "has_public_openings": null,
-      "ml_relevance_reason": null
+      "ml_relevance_reason": null,
+      "target_domains": [
+        "all"
+      ]
     },
     {
       "name": "Zepto",
@@ -434,7 +512,10 @@
       "discovered_via": "manual",
       "discovered_at": "2026-05-04",
       "has_public_openings": null,
-      "ml_relevance_reason": null
+      "ml_relevance_reason": null,
+      "target_domains": [
+        "all"
+      ]
     },
     {
       "name": "Swiggy",
@@ -449,7 +530,10 @@
       "discovered_via": "manual",
       "discovered_at": "2026-05-04",
       "has_public_openings": null,
-      "ml_relevance_reason": null
+      "ml_relevance_reason": null,
+      "target_domains": [
+        "all"
+      ]
     },
     {
       "name": "Meesho",
@@ -466,7 +550,10 @@
       "discovered_via": "manual",
       "discovered_at": "2026-05-04",
       "has_public_openings": null,
-      "ml_relevance_reason": null
+      "ml_relevance_reason": null,
+      "target_domains": [
+        "all"
+      ]
     },
     {
       "name": "Razorpay",
@@ -481,7 +568,10 @@
       "discovered_via": "manual",
       "discovered_at": "2026-05-04",
       "has_public_openings": null,
-      "ml_relevance_reason": null
+      "ml_relevance_reason": null,
+      "target_domains": [
+        "all"
+      ]
     },
     {
       "name": "PhonePe",
@@ -498,7 +588,10 @@
       "discovered_via": "manual",
       "discovered_at": "2026-05-04",
       "has_public_openings": null,
-      "ml_relevance_reason": null
+      "ml_relevance_reason": null,
+      "target_domains": [
+        "all"
+      ]
     },
     {
       "name": "CRED",
@@ -515,7 +608,10 @@
       "discovered_via": "manual",
       "discovered_at": "2026-05-04",
       "has_public_openings": null,
-      "ml_relevance_reason": null
+      "ml_relevance_reason": null,
+      "target_domains": [
+        "all"
+      ]
     },
     {
       "name": "Dream11",
@@ -531,7 +627,10 @@
       "discovered_via": "manual",
       "discovered_at": "2026-05-04",
       "has_public_openings": null,
-      "ml_relevance_reason": null
+      "ml_relevance_reason": null,
+      "target_domains": [
+        "all"
+      ]
     },
     {
       "name": "Groww",
@@ -548,7 +647,10 @@
       "discovered_via": "manual",
       "discovered_at": "2026-05-04",
       "has_public_openings": null,
-      "ml_relevance_reason": null
+      "ml_relevance_reason": null,
+      "target_domains": [
+        "all"
+      ]
     },
     {
       "name": "Juspay",
@@ -563,7 +665,10 @@
       "discovered_via": "manual",
       "discovered_at": "2026-05-04",
       "has_public_openings": null,
-      "ml_relevance_reason": null
+      "ml_relevance_reason": null,
+      "target_domains": [
+        "all"
+      ]
     },
     {
       "name": "Browserstack",
@@ -578,7 +683,10 @@
       "discovered_via": "manual",
       "discovered_at": "2026-05-04",
       "has_public_openings": null,
-      "ml_relevance_reason": null
+      "ml_relevance_reason": null,
+      "target_domains": [
+        "all"
+      ]
     },
     {
       "name": "Freshworks",
@@ -593,7 +701,10 @@
       "discovered_via": "manual",
       "discovered_at": "2026-05-04",
       "has_public_openings": null,
-      "ml_relevance_reason": null
+      "ml_relevance_reason": null,
+      "target_domains": [
+        "all"
+      ]
     },
     {
       "name": "Postman",
@@ -610,7 +721,10 @@
       "discovered_via": "manual",
       "discovered_at": "2026-05-04",
       "has_public_openings": null,
-      "ml_relevance_reason": null
+      "ml_relevance_reason": null,
+      "target_domains": [
+        "all"
+      ]
     },
     {
       "name": "InMobi",
@@ -625,7 +739,10 @@
       "discovered_via": "manual",
       "discovered_at": "2026-05-04",
       "has_public_openings": null,
-      "ml_relevance_reason": null
+      "ml_relevance_reason": null,
+      "target_domains": [
+        "all"
+      ]
     },
     {
       "name": "Ola",
@@ -641,7 +758,10 @@
       "discovered_via": "manual",
       "discovered_at": "2026-05-04",
       "has_public_openings": null,
-      "ml_relevance_reason": null
+      "ml_relevance_reason": null,
+      "target_domains": [
+        "all"
+      ]
     },
     {
       "name": "Zomato",
@@ -656,7 +776,10 @@
       "discovered_via": "manual",
       "discovered_at": "2026-05-04",
       "has_public_openings": null,
-      "ml_relevance_reason": null
+      "ml_relevance_reason": null,
+      "target_domains": [
+        "all"
+      ]
     },
     {
       "name": "Myntra",
@@ -671,7 +794,10 @@
       "discovered_via": "manual",
       "discovered_at": "2026-05-04",
       "has_public_openings": null,
-      "ml_relevance_reason": null
+      "ml_relevance_reason": null,
+      "target_domains": [
+        "all"
+      ]
     },
     {
       "name": "Disney+ Hotstar",
@@ -686,7 +812,10 @@
       "discovered_via": "manual",
       "discovered_at": "2026-05-04",
       "has_public_openings": null,
-      "ml_relevance_reason": null
+      "ml_relevance_reason": null,
+      "target_domains": [
+        "all"
+      ]
     },
     {
       "name": "MakeMyTrip",
@@ -701,7 +830,10 @@
       "discovered_via": "manual",
       "discovered_at": "2026-05-04",
       "has_public_openings": null,
-      "ml_relevance_reason": null
+      "ml_relevance_reason": null,
+      "target_domains": [
+        "all"
+      ]
     },
     {
       "name": "Zoho",
@@ -716,7 +848,10 @@
       "discovered_via": "manual",
       "discovered_at": "2026-05-04",
       "has_public_openings": null,
-      "ml_relevance_reason": null
+      "ml_relevance_reason": null,
+      "target_domains": [
+        "all"
+      ]
     },
     {
       "name": "Delhivery",
@@ -731,7 +866,10 @@
       "discovered_via": "manual",
       "discovered_at": "2026-05-04",
       "has_public_openings": null,
-      "ml_relevance_reason": null
+      "ml_relevance_reason": null,
+      "target_domains": [
+        "all"
+      ]
     },
     {
       "name": "upGrad",
@@ -746,7 +884,10 @@
       "discovered_via": "manual",
       "discovered_at": "2026-05-04",
       "has_public_openings": null,
-      "ml_relevance_reason": null
+      "ml_relevance_reason": null,
+      "target_domains": [
+        "all"
+      ]
     },
     {
       "name": "Slice",
@@ -763,7 +904,10 @@
       "discovered_via": "manual",
       "discovered_at": "2026-05-11",
       "has_public_openings": true,
-      "ml_relevance_reason": "Credit risk ML, fraud detection, UPI analytics"
+      "ml_relevance_reason": "Credit risk ML, fraud detection, UPI analytics",
+      "target_domains": [
+        "all"
+      ]
     },
     {
       "name": "BharatPe",
@@ -778,7 +922,10 @@
       "discovered_via": "manual",
       "discovered_at": "2026-05-04",
       "has_public_openings": null,
-      "ml_relevance_reason": null
+      "ml_relevance_reason": null,
+      "target_domains": [
+        "all"
+      ]
     },
     {
       "name": "Tata 1mg",
@@ -793,7 +940,10 @@
       "discovered_via": "manual",
       "discovered_at": "2026-05-04",
       "has_public_openings": null,
-      "ml_relevance_reason": null
+      "ml_relevance_reason": null,
+      "target_domains": [
+        "all"
+      ]
     },
     {
       "name": "Physics Wallah",
@@ -808,7 +958,10 @@
       "discovered_via": "manual",
       "discovered_at": "2026-05-04",
       "has_public_openings": null,
-      "ml_relevance_reason": null
+      "ml_relevance_reason": null,
+      "target_domains": [
+        "all"
+      ]
     },
     {
       "name": "Urban Company",
@@ -823,7 +976,10 @@
       "discovered_via": "manual",
       "discovered_at": "2026-05-04",
       "has_public_openings": null,
-      "ml_relevance_reason": null
+      "ml_relevance_reason": null,
+      "target_domains": [
+        "all"
+      ]
     },
     {
       "name": "Rapido",
@@ -838,7 +994,10 @@
       "discovered_via": "manual",
       "discovered_at": "2026-05-04",
       "has_public_openings": null,
-      "ml_relevance_reason": null
+      "ml_relevance_reason": null,
+      "target_domains": [
+        "all"
+      ]
     },
     {
       "name": "Lenskart",
@@ -853,7 +1012,10 @@
       "discovered_via": "manual",
       "discovered_at": "2026-05-04",
       "has_public_openings": null,
-      "ml_relevance_reason": null
+      "ml_relevance_reason": null,
+      "target_domains": [
+        "all"
+      ]
     },
     {
       "name": "Porter",
@@ -870,7 +1032,10 @@
       "discovered_via": "manual",
       "discovered_at": "2026-05-04",
       "has_public_openings": null,
-      "ml_relevance_reason": null
+      "ml_relevance_reason": null,
+      "target_domains": [
+        "all"
+      ]
     },
     {
       "name": "CleverTap",
@@ -885,7 +1050,10 @@
       "discovered_via": "manual",
       "discovered_at": "2026-05-04",
       "has_public_openings": null,
-      "ml_relevance_reason": null
+      "ml_relevance_reason": null,
+      "target_domains": [
+        "all"
+      ]
     },
     {
       "name": "MoEngage",
@@ -900,7 +1068,10 @@
       "discovered_via": "manual",
       "discovered_at": "2026-05-04",
       "has_public_openings": null,
-      "ml_relevance_reason": null
+      "ml_relevance_reason": null,
+      "target_domains": [
+        "all"
+      ]
     },
     {
       "name": "ixigo",
@@ -915,7 +1086,10 @@
       "discovered_via": "manual",
       "discovered_at": "2026-05-04",
       "has_public_openings": null,
-      "ml_relevance_reason": null
+      "ml_relevance_reason": null,
+      "target_domains": [
+        "all"
+      ]
     },
     {
       "name": "OYO",
@@ -930,7 +1104,10 @@
       "discovered_via": "manual",
       "discovered_at": "2026-05-04",
       "has_public_openings": null,
-      "ml_relevance_reason": null
+      "ml_relevance_reason": null,
+      "target_domains": [
+        "all"
+      ]
     },
     {
       "name": "Navi Technologies",
@@ -945,7 +1122,10 @@
       "discovered_via": "manual",
       "discovered_at": "2026-05-04",
       "has_public_openings": null,
-      "ml_relevance_reason": null
+      "ml_relevance_reason": null,
+      "target_domains": [
+        "all"
+      ]
     },
     {
       "name": "MPL (Mobile Premier League)",
@@ -960,7 +1140,10 @@
       "discovered_via": "manual",
       "discovered_at": "2026-05-04",
       "has_public_openings": null,
-      "ml_relevance_reason": null
+      "ml_relevance_reason": null,
+      "target_domains": [
+        "all"
+      ]
     },
     {
       "name": "Sarvam AI",
@@ -975,7 +1158,10 @@
       "discovered_via": "manual",
       "discovered_at": "2026-05-04",
       "has_public_openings": null,
-      "ml_relevance_reason": null
+      "ml_relevance_reason": null,
+      "target_domains": [
+        "ml_ai"
+      ]
     },
     {
       "name": "Krutrim AI",
@@ -991,7 +1177,10 @@
       "discovered_via": "manual",
       "discovered_at": "2026-05-04",
       "has_public_openings": null,
-      "ml_relevance_reason": null
+      "ml_relevance_reason": null,
+      "target_domains": [
+        "ml_ai"
+      ]
     },
     {
       "name": "Uniphore",
@@ -1006,7 +1195,10 @@
       "discovered_via": "manual",
       "discovered_at": "2026-05-04",
       "has_public_openings": null,
-      "ml_relevance_reason": null
+      "ml_relevance_reason": null,
+      "target_domains": [
+        "ml_ai"
+      ]
     },
     {
       "name": "Yellow.ai",
@@ -1022,7 +1214,10 @@
       "discovered_via": "manual",
       "discovered_at": "2026-05-04",
       "has_public_openings": null,
-      "ml_relevance_reason": null
+      "ml_relevance_reason": null,
+      "target_domains": [
+        "ml_ai"
+      ]
     },
     {
       "name": "Observe.AI",
@@ -1038,7 +1233,10 @@
       "discovered_via": "manual",
       "discovered_at": "2026-05-04",
       "has_public_openings": null,
-      "ml_relevance_reason": null
+      "ml_relevance_reason": null,
+      "target_domains": [
+        "ml_ai"
+      ]
     },
     {
       "name": "Mad Street Den (Vue.ai)",
@@ -1053,7 +1251,10 @@
       "discovered_via": "manual",
       "discovered_at": "2026-05-04",
       "has_public_openings": null,
-      "ml_relevance_reason": null
+      "ml_relevance_reason": null,
+      "target_domains": [
+        "ml_ai"
+      ]
     },
     {
       "name": "Sprinklr",
@@ -1068,7 +1269,10 @@
       "discovered_via": "manual",
       "discovered_at": "2026-05-04",
       "has_public_openings": null,
-      "ml_relevance_reason": null
+      "ml_relevance_reason": null,
+      "target_domains": [
+        "all"
+      ]
     },
     {
       "name": "Darwinbox",
@@ -1083,7 +1287,10 @@
       "discovered_via": "manual",
       "discovered_at": "2026-05-04",
       "has_public_openings": null,
-      "ml_relevance_reason": null
+      "ml_relevance_reason": null,
+      "target_domains": [
+        "all"
+      ]
     },
     {
       "name": "Auric AI Labs",
@@ -1099,7 +1306,10 @@
       "discovered_via": "manual",
       "discovered_at": "2026-05-04",
       "has_public_openings": null,
-      "ml_relevance_reason": null
+      "ml_relevance_reason": null,
+      "target_domains": [
+        "ml_ai"
+      ]
     },
     {
       "name": "Haptik (JioHaptik)",
@@ -1114,6 +1324,164 @@
       "discovered_via": "manual",
       "discovered_at": "2026-05-04",
       "has_public_openings": null,
+      "ml_relevance_reason": null,
+      "target_domains": [
+        "ml_ai"
+      ]
+    },
+    {
+      "name": "Cisco Systems India",
+      "tier": "top_global_product",
+      "linkedin_slug": "cisco",
+      "ats_type": "linkedin",
+      "careers_url": "https://jobs.cisco.com/jobs/SearchJobs/?21178=%5B169482%5D&21178_format=6020&listFilterMode=1",
+      "scrape_method": "linkedin",
+      "why": "Massive India presence (15k+ engineers), heavy C++/networking, strong SDE culture",
+      "pipeline_stage": "watchlist",
+      "target_domains": [
+        "sde",
+        "all"
+      ],
+      "funding_stage": null,
+      "funding_amount": null,
+      "discovered_via": "manual",
+      "discovered_at": "2026-05-17",
+      "has_public_openings": true,
+      "ml_relevance_reason": null
+    },
+    {
+      "name": "NetApp India",
+      "tier": "top_global_product",
+      "linkedin_slug": "netapp",
+      "ats_type": "linkedin",
+      "careers_url": "https://careers.netapp.com/go/All-Jobs/4516501/",
+      "scrape_method": "linkedin",
+      "why": "Storage systems, heavy C++/distributed systems, large Bengaluru R&D center",
+      "pipeline_stage": "watchlist",
+      "target_domains": [
+        "sde"
+      ],
+      "funding_stage": null,
+      "funding_amount": null,
+      "discovered_via": "manual",
+      "discovered_at": "2026-05-17",
+      "has_public_openings": true,
+      "ml_relevance_reason": null
+    },
+    {
+      "name": "Nutanix India",
+      "tier": "top_global_product",
+      "linkedin_slug": "nutanix",
+      "ats_type": "linkedin",
+      "careers_url": "https://jobs.jobvite.com/nutanix",
+      "scrape_method": "linkedin",
+      "why": "Hyper-converged infrastructure, C++/Go/Python, strong Bengaluru SDE hiring",
+      "pipeline_stage": "watchlist",
+      "target_domains": [
+        "sde"
+      ],
+      "funding_stage": null,
+      "funding_amount": null,
+      "discovered_via": "manual",
+      "discovered_at": "2026-05-17",
+      "has_public_openings": true,
+      "ml_relevance_reason": null
+    },
+    {
+      "name": "Cohesity India",
+      "tier": "top_ai_startup",
+      "linkedin_slug": "cohesity",
+      "ats_type": "greenhouse",
+      "ats_token": "cohesity",
+      "careers_url": "https://www.cohesity.com/company/careers/",
+      "scrape_method": "greenhouse",
+      "why": "Data management/backup, C++/distributed systems, Commvault direct competitor — SDE-heavy",
+      "pipeline_stage": "watchlist",
+      "target_domains": [
+        "sde"
+      ],
+      "funding_stage": "series_f",
+      "funding_amount": "$900M",
+      "discovered_via": "manual",
+      "discovered_at": "2026-05-17",
+      "has_public_openings": true,
+      "ml_relevance_reason": null
+    },
+    {
+      "name": "Rubrik India",
+      "tier": "top_global_product",
+      "linkedin_slug": "rubrik",
+      "ats_type": "linkedin",
+      "careers_url": "https://www.rubrik.com/company/careers",
+      "scrape_method": "linkedin",
+      "why": "Cloud data management, C++/Go backend, strong Bengaluru office, IPO'd 2024",
+      "pipeline_stage": "watchlist",
+      "target_domains": [
+        "sde"
+      ],
+      "funding_stage": null,
+      "funding_amount": null,
+      "discovered_via": "manual",
+      "discovered_at": "2026-05-17",
+      "has_public_openings": true,
+      "ml_relevance_reason": null
+    },
+    {
+      "name": "Palo Alto Networks India",
+      "tier": "top_global_product",
+      "linkedin_slug": "palo-alto-networks",
+      "ats_type": "linkedin",
+      "careers_url": "https://jobs.paloaltonetworks.com/en/jobs/",
+      "scrape_method": "linkedin",
+      "why": "Cybersecurity platform, C++/Python/Go backend, growing India R&D",
+      "pipeline_stage": "watchlist",
+      "target_domains": [
+        "sde"
+      ],
+      "funding_stage": null,
+      "funding_amount": null,
+      "discovered_via": "manual",
+      "discovered_at": "2026-05-17",
+      "has_public_openings": true,
+      "ml_relevance_reason": null
+    },
+    {
+      "name": "ServiceNow India",
+      "tier": "top_global_product",
+      "linkedin_slug": "servicenow",
+      "ats_type": "linkedin",
+      "careers_url": "https://careers.servicenow.com/en/jobs/",
+      "scrape_method": "linkedin",
+      "why": "Enterprise cloud platform, Java/C++ backend, large Hyderabad + Bengaluru office",
+      "pipeline_stage": "watchlist",
+      "target_domains": [
+        "sde"
+      ],
+      "funding_stage": null,
+      "funding_amount": null,
+      "discovered_via": "manual",
+      "discovered_at": "2026-05-17",
+      "has_public_openings": true,
+      "ml_relevance_reason": null
+    },
+    {
+      "name": "Datadog India",
+      "tier": "top_global_product",
+      "linkedin_slug": "datadoghq",
+      "ats_type": "greenhouse",
+      "ats_token": "datadog",
+      "careers_url": "https://www.datadoghq.com/careers/",
+      "scrape_method": "greenhouse",
+      "why": "Observability platform, Go/C++ backend, growing Bengaluru office, strong eng culture",
+      "pipeline_stage": "watchlist",
+      "target_domains": [
+        "sde"
+      ],
+      "funding_stage": null,
+      "funding_amount": null,
+      "discovered_via": "manual",
+      "discovered_at": "2026-05-17",
+      "has_public_openings": true,
       "ml_relevance_reason": null
     }
   ]
