@@ -151,12 +151,20 @@ MISSING INFO HANDLING:
 If salary, experience requirement, or other key fields are missing from the JD,
 use reasonable inference from company type and industry norms. Do not penalise for missing info.
 
-HARD RULE — CHECK THIS FIRST BEFORE ANY OTHER SCORING:
+HARD RULE 1 — CHECK THIS FIRST BEFORE ANY OTHER SCORING:
 If the job title contains ANY of these seniority words: "Senior", "Sr.", "Staff", "Principal",
 "Lead", "Manager", "Director", "Head of", "VP", "President"
 → IMMEDIATELY return score=3, relevancy="low". No exceptions. Not even for top companies.
 The candidate has {exp_band['band']} experience ({exp_band['months_at_switch']} months at switch)
 and these roles are too senior. Titles without a seniority prefix are fine — score them normally.
+
+HARD RULE 2 — OFF-DOMAIN TITLE OVERRIDE:
+The pre-extracted facts include "Detected job function from title".
+If that value contains "NOT a" (i.e., the title was pre-classified as off-domain):
+→ CAP total score at 4, relevancy="low". The JD may mention other technologies but
+the TITLE is the canonical signal for what this role actually does day-to-day.
+Do NOT override this based on JD content. A Java SDE role that mentions ML in passing
+is still a Java SDE role.
 
 SCORING (only if title passes the hard rule above):
 1. Company quality: 0-4 points
@@ -270,7 +278,7 @@ SERVICE_COMPANY_KEYWORDS = [
     "capgemini", "cognizant", "hcl", "tech mahindra", "mphasis",
     "hexaware", "ltimindtree", "birlasoft", "kpit", "cyient",
     "mindtree", "mastech", "niit technologies", "zensar", "ntt data",
-    "happiest minds",
+    "happiest minds", "synechron",
 ]
 
 # Job aggregators and recruiter platforms — post on behalf of real employers.
@@ -385,6 +393,8 @@ _ML_AI_DS_KEYWORDS = [
     "llm engineer", "large language model engineer",
     "ai research engineer", "ai researcher", "ai scientist",
     "conversational ai", "prompt engineer",
+    # Catch bare "genai" and "agentic" in titles like "Software Engineer - GenAI/Agentic"
+    "genai", "agentic",
     # Applied Science
     "applied scientist", "applied ml", "applied machine learning",
     "applied ai", "applied research scientist",
@@ -640,24 +650,32 @@ def fetch_jobs_indeed(search_term: str, location: str, hours_old: int = 72) -> p
     Fetch jobs from Indeed + Glassdoor via JobSpy.
     Google removed (403 broken since Sep 2025). Naukri removed (reCAPTCHA 406).
     LinkedIn handled separately via scrape_linkedin_jobs().
+    Retries once on timeout — Indeed India is slow and the default JobSpy timeout
+    causes frequent read timeouts on primary SDE search terms.
     """
+    import time as _time
     logger.info(f"JobSpy (Indeed+Glassdoor): '{search_term}' in '{location}' (last {hours_old}h)")
-    try:
-        df = scrape_jobs(
-            site_name=["indeed", "glassdoor"],
-            search_term=search_term,
-            location=location,
-            results_wanted=100,
-            hours_old=hours_old,
-            country_indeed="India",
-            description_format="markdown",
-            verbose=0,
-        )
-        logger.info(f"  Indeed/Glassdoor: {len(df)} results for '{search_term}'")
-        return df
-    except Exception as e:
-        logger.error(f"JobSpy failed for '{search_term}': {e}")
-        return pd.DataFrame()
+    for attempt in range(2):
+        try:
+            df = scrape_jobs(
+                site_name=["indeed", "glassdoor"],
+                search_term=search_term,
+                location=location,
+                results_wanted=100,
+                hours_old=hours_old,
+                country_indeed="India",
+                description_format="markdown",
+                verbose=0,
+            )
+            logger.info(f"  Indeed/Glassdoor: {len(df)} results for '{search_term}'")
+            return df
+        except Exception as e:
+            if attempt == 0:
+                logger.warning(f"JobSpy attempt 1 failed for '{search_term}': {e} — retrying in 5s")
+                _time.sleep(5)
+            else:
+                logger.error(f"JobSpy failed for '{search_term}' after retry: {e}")
+    return pd.DataFrame()
 
 
 def fetch_jobs_linkedin(search_term: str, location: str, hours_old: int = 72) -> list[dict]:
@@ -977,9 +995,10 @@ def run(hours_old: int = 72, min_score: int = 5) -> list:
     combined = pd.concat(all_frames, ignore_index=True)
     # Primary dedup: exact URL match
     combined = combined.drop_duplicates(subset=["job_url"], keep="first")
-    # Secondary dedup: same company + same title posted with different URLs (common on Indeed)
+    # Secondary dedup: canonical company + same title — catches cross-source duplicates
+    # e.g. "Amazon.com" (Indeed) + "Amazon Science" (LinkedIn) posting same job
     combined["_dedup_key"] = (
-        combined["company"].str.lower().str.strip() + "||" +
+        combined["company"].str.lower().str.strip().apply(canonical_company_name) + "||" +
         combined["title"].str.lower().str.strip()
     )
     combined = combined.drop_duplicates(subset=["_dedup_key"], keep="first")
@@ -1151,16 +1170,16 @@ def run(hours_old: int = 72, min_score: int = 5) -> list:
 
     # Apply company diversity cap — max 3 jobs per company in final output
     # Jobs are already sorted by score, so we keep the best ones per company
-    diverse_jobs = apply_company_diversity(scored_jobs, max_per_company=5)
+    diverse_jobs = apply_company_diversity(scored_jobs, max_per_company=3)
     dropped = len(scored_jobs) - len(diverse_jobs)
     if dropped:
-        console.print(f"  Company diversity cap applied: {dropped} duplicate-company jobs removed (max 5 per company)")
+        console.print(f"  Company diversity cap applied: {dropped} duplicate-company jobs removed (max 3 per company)")
 
     print_results(diverse_jobs)
 
-    # Save full run summary
+    # Save full run summary — save post-cap results so the dashboard reflects what was shown
     summary_path = config.data_dir / "last_discovery_run.json"
-    summary_path.write_text(json.dumps(scored_jobs, indent=2, ensure_ascii=False), encoding="utf-8")
+    summary_path.write_text(json.dumps(diverse_jobs, indent=2, ensure_ascii=False), encoding="utf-8")
     console.print(f"  Full results saved → {summary_path}")
 
     # Save rejected jobs for scoring audit
