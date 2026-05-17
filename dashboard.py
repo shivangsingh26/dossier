@@ -219,17 +219,28 @@ CUSTOM_CSS = """
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
-/* ── Base reset ── */
+/* ── Base reset — force light mode regardless of OS preference ── */
 html, body, [class*="css"] {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
     -webkit-font-smoothing: antialiased;
+    color-scheme: light !important;
 }
+html { background: #f8fafc !important; }
+body { background: #f8fafc !important; color: #0f172a !important; }
 #MainMenu, footer, header { visibility: hidden; }
 .block-container {
     padding-top: 1.25rem !important;
     padding-bottom: 2rem !important;
     max-width: 1640px !important;
+    background: transparent !important;
 }
+/* Force all text dark on light bg */
+[data-testid="stAppViewContainer"] { background: #f8fafc !important; }
+[data-testid="stMain"] { background: #f8fafc !important; }
+[data-testid="stMarkdownContainer"] p { color: #374151 !important; }
+[data-testid="stMarkdownContainer"] h1,
+[data-testid="stMarkdownContainer"] h2,
+[data-testid="stMarkdownContainer"] h3 { color: #0f172a !important; }
 
 /* ── Sidebar ── */
 [data-testid="stSidebar"] {
@@ -368,13 +379,19 @@ html, body, [class*="css"] {
     padding: 0 !important;
     margin-bottom: 6px !important;
     transition: border-color 0.12s ease, box-shadow 0.12s ease !important;
-    background: white !important;
+    background: #ffffff !important;
     overflow: hidden !important;
+    color-scheme: light !important;
 }
 [data-testid="stVerticalBlockBorderWrapper"]:hover {
     border-color: #a5b4fc !important;
     box-shadow: 0 2px 14px rgba(99,102,241,0.09) !important;
 }
+
+/* ── Ensure inner text stays dark ── */
+[data-testid="stVerticalBlockBorderWrapper"] p,
+[data-testid="stVerticalBlockBorderWrapper"] span,
+[data-testid="stVerticalBlockBorderWrapper"] div { color: inherit; }
 
 /* ── KPI cards ── */
 .kpi-card {
