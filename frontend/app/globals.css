@@ -1,26 +1,56 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* Warm Mocha — spec §3.1. Dark-only for v1. */
+@theme {
+  --color-bg: #1a1410;
+  --color-surface: #251d18;
+  --color-surface-2: #15100d;
+  --color-border: #2d2419;
+  --color-border-2: #44342a;
+
+  --color-text: #f5ebe0;
+  --color-text-muted: #a89589;
+  --color-text-subtle: #7a695a;
+
+  --color-primary: #f97316;
+  --color-primary-hov: #ea580c;
+  --color-primary-soft: #fdba74;
+
+  --color-secondary: #4ade80;
+  --color-secondary-soft: rgba(74, 222, 128, 0.15);
+
+  --color-warning: #fbbf24;
+  --color-danger: #ef4444;
+
+  --color-score-9: #4ade80;
+  --color-score-7: #1d4ed8;
+  --color-score-5: #fdba74;
+  --color-score-low: #ef4444;
+
+  --font-display: var(--font-fraunces), Georgia, serif;
+  --font-sans: var(--font-geist), "Inter", system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
+  --radius-2xl: 18px;
+
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.04);
+  --shadow-hover: 0 4px 22px rgba(249, 115, 22, 0.14);
+  --shadow-modal: 0 24px 60px rgba(0, 0, 0, 0.6);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+html,
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--color-primary);
+  color: var(--color-bg);
 }
