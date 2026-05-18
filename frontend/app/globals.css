@@ -37,8 +37,7 @@
   --color-score-5: #fdba74;
   --color-score-low: #ef4444;
 
-  --font-display: var(--font-fraunces), Georgia, serif;
-  --font-sans: var(--font-geist), "Inter", system-ui, sans-serif;
+  --font-sans: var(--font-cabinet), "Inter", system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 
   --radius-sm: 6px;
@@ -54,8 +53,8 @@
 
 /* shadcn @theme inline — maps semantic CSS vars below into Tailwind utilities. */
 @theme inline {
-  --font-heading: var(--font-display);
-  --font-sans: var(--font-sans);
+  --font-heading: var(--font-cabinet), "Inter", system-ui, sans-serif;
+  --font-sans: var(--font-cabinet), "Inter", system-ui, sans-serif;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);

@@ -21,7 +21,6 @@ export const theme = {
     danger: "#ef4444",
   },
   font: {
-    display: "var(--font-fraunces)",
     sans: "var(--font-geist)",
     mono: "var(--font-geist-mono)",
   },
