@@ -1,26 +1,36 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
-/* Warm Mocha — spec §3.1. Dark-only for v1. */
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Warm Mocha — spec §3.1. Dark-only for v1.
+ *
+ * Two-layer setup:
+ *   1) Our brand-only @theme tokens (--color-bg, --color-surface, ...) for direct
+ *      access via `bg-[color:var(--color-bg)]` etc.
+ *   2) :root semantic tokens (--background, --primary, ...) drive shadcn primitives
+ *      via the shadcn @theme inline mapping below. Setting these to mocha values
+ *      means shadcn Button/Card automatically theme to peach + mocha surfaces.
+ */
+
+/* Brand-only tokens (no shadcn collision). */
 @theme {
   --color-bg: #1a1410;
   --color-surface: #251d18;
   --color-surface-2: #15100d;
-  --color-border: #2d2419;
   --color-border-2: #44342a;
 
   --color-text: #f5ebe0;
   --color-text-muted: #a89589;
   --color-text-subtle: #7a695a;
 
-  --color-primary: #f97316;
   --color-primary-hov: #ea580c;
   --color-primary-soft: #fdba74;
-
-  --color-secondary: #4ade80;
   --color-secondary-soft: rgba(74, 222, 128, 0.15);
 
   --color-warning: #fbbf24;
-  --color-danger: #ef4444;
 
   --color-score-9: #4ade80;
   --color-score-7: #1d4ed8;
@@ -42,15 +52,94 @@
   --shadow-modal: 0 24px 60px rgba(0, 0, 0, 0.6);
 }
 
-html,
-body {
-  background: var(--color-bg);
-  color: var(--color-text);
-  font-family: var(--font-sans);
-  -webkit-font-smoothing: antialiased;
+/* shadcn @theme inline — maps semantic CSS vars below into Tailwind utilities. */
+@theme inline {
+  --font-heading: var(--font-display);
+  --font-sans: var(--font-sans);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-::selection {
-  background: var(--color-primary);
-  color: var(--color-bg);
+/* :root — warm mocha values driving every shadcn primitive. */
+:root {
+  --background: #1a1410;
+  --foreground: #f5ebe0;
+  --card: #251d18;
+  --card-foreground: #f5ebe0;
+  --popover: #251d18;
+  --popover-foreground: #f5ebe0;
+  --primary: #f97316;
+  --primary-foreground: #1a1410;
+  --secondary: #4ade80;
+  --secondary-foreground: #1a1410;
+  --muted: #251d18;
+  --muted-foreground: #a89589;
+  --accent: #251d18;
+  --accent-foreground: #f5ebe0;
+  --destructive: #ef4444;
+  --border: #2d2419;
+  --input: #251d18;
+  --ring: #f97316;
+  --chart-1: #4ade80;
+  --chart-2: #1d4ed8;
+  --chart-3: #fdba74;
+  --chart-4: #ef4444;
+  --chart-5: #f97316;
+  --radius: 0.625rem;
+  --sidebar: #15100d;
+  --sidebar-foreground: #f5ebe0;
+  --sidebar-primary: #f97316;
+  --sidebar-primary-foreground: #1a1410;
+  --sidebar-accent: #251d18;
+  --sidebar-accent-foreground: #f5ebe0;
+  --sidebar-border: #2d2419;
+  --sidebar-ring: #f97316;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    @apply font-sans;
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  ::selection {
+    background: var(--primary);
+    color: var(--background);
+  }
 }
