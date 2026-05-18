@@ -1,0 +1,28 @@
+{
+  "users": [
+    {
+      "slug": "shivang",
+      "email": "shivang@example.com",
+      "role": "admin",
+      "tier": "max"
+    },
+    {
+      "slug": "krishna",
+      "email": "krishna@example.com",
+      "role": "user",
+      "tier": "max"
+    },
+    {
+      "slug": "anushthan",
+      "email": "anushthan@example.com",
+      "role": "user",
+      "tier": "max"
+    },
+    {
+      "slug": "sambhav",
+      "email": "sambhav@example.com",
+      "role": "user",
+      "tier": "max"
+    }
+  ]
+}
