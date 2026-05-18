@@ -21,14 +21,11 @@ const BASE = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:8000";
 async function authedFetch(path: string, init?: RequestInit): Promise<Response> {
   const { getToken } = await auth();
   const token = await getToken();
-  return fetch(`${BASE}${path}`, {
-    ...init,
-    headers: {
-      ...(init?.headers ?? {}),
-      Authorization: token ? `Bearer ${token}` : "",
-    },
-    cache: "no-store",
-  });
+  const headers: Record<string, string> = { ...(init?.headers as Record<string, string> ?? {}) };
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+  return fetch(`${BASE}${path}`, { ...init, headers, cache: "no-store" });
 }
 
 export type MeResult =
@@ -43,7 +40,11 @@ export async function fetchMe(): Promise<MeResult> {
   } catch (e) {
     return { kind: "error", status: 0, message: (e as Error).message };
   }
-  if (res.status === 403) return { kind: "no-account" };
+  // 401 = no/empty Clerk JWT (session token not yet issued on first RSC render
+  // after fresh signup). 403 = JWT valid but no accounts.db row yet (webhook
+  // hasn't fired) or account suspended. UX-wise both are "pending / not ready"
+  // — render the pending screen instead of an error.
+  if (res.status === 401 || res.status === 403) return { kind: "no-account" };
   if (!res.ok) {
     return { kind: "error", status: res.status, message: await res.text() };
   }

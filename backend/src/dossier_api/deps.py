@@ -25,7 +25,8 @@ def _extract_bearer(request: Request) -> str | None:
     auth = request.headers.get("authorization") or request.headers.get("Authorization")
     if not auth or not auth.lower().startswith("bearer "):
         return None
-    return auth.split(" ", 1)[1].strip()
+    token = auth.split(" ", 1)[1].strip()
+    return token or None
 
 
 def _verify_clerk_jwt(token: str) -> str:
