@@ -1,7 +1,7 @@
 # Dossier SaaS frontend — live task tracker
 # Synced with docs/superpowers/milestones/M*.md
 # Status keys: [ ] todo · [~] in progress · [x] done · [-] cancelled
-# Last updated: 2026-05-18 (M1 shipped)
+# Last updated: 2026-05-19 (M2 shipped)
 
 ============================================================
 MVP path: M0 → M1 → M2 → M3 → M4 = first usable web product.
@@ -53,15 +53,46 @@ Vitest 4 + @testing-library/react, shadcn/ui (radix base)
 Plan: docs/superpowers/milestones/M1.md
 
 
-## M2 — Backend skeleton + Clerk webhook + accounts DB + worker  (waiting on M1)
-[ ] Stub plan: docs/superpowers/milestones/M2.md
-[ ] Estimated: 10–12 tasks, 6–10h
-Key deliverables:
-   - FastAPI app + accounts.db schema
-   - Clerk JWT middleware + signup webhook
-   - Seed script for existing 4 users (shivang, krishna, anushthan, sambhav)
-   - pipeline_worker.py boilerplate (idle loop)
-   - Frontend CreditPill wired to real /me
+## M2 — Backend skeleton + Clerk webhook + accounts DB + worker  (DONE 2026-05-19)
+[x] T1  Extract orchestrator from run_dossier.py → sdk/dossier_sdk/orchestrator.py
+        (M0 T4 deferred). RunResult dataclass + run_pipeline. run_dossier.py
+        becomes thin CLI. SDK baseline preserved (58 pass / 8 pre-existing fail).
+[x] T2  Backend pyproject + uv venv (fastapi 0.136.1, clerk-backend-api 5.0.6,
+        svix 1.93.0, sse-starlette 3.4.4, fasteners 0.20, pydantic 2.13.3)
+[x] T3  accounts.db schema + db.py — accounts, credit_log, pipeline_runs,
+        waitlist with idempotent init_db. 7 db tests pass.
+[x] T4  Pydantic AccountResponse + CreditDebit
+[x] T5  FastAPI main.py with lifespan(init_db) + CORS + GET /health (1 test)
+[x] T6  deps.py — get_current_clerk_id + get_current_user + require_admin;
+        uses real clerk-backend-api 5.0.6 security.verifytoken surface
+[x] T7  GET /me router — 401/403/200/suspended semantics (4 tests)
+[x] T8  POST /webhooks/clerk — Svix HMAC verify, user.created provisions
+        pending row, user.deleted soft-delete, idempotent (4 tests)
+[x] T9  scripts/seed_existing_users.py — idempotent Clerk + accounts.db
+        seeder for shivang/krishna/anushthan/sambhav. Gated on seed_users.json.
+[x] T10 workers/pipeline_worker.py — atomic pick_next_queued_run + idle loop.
+        M2 picks but no-ops, real exec wired in M4. (3 tests). Smoke: boots,
+        logs "[idle] no queued runs" every 5s.
+[x] T11 frontend/lib/server-api.ts + lib/api.ts — typed FastAPI client
+        (RSC + client variants) injecting Clerk session token
+[x] T12 Frontend wiring — CreditPill accepts real {credits, creditsTotal};
+        (app)/layout.tsx fetches /me, branches on no-account/error/pending/
+        suspended/active; (app)/pending/page.tsx with SignOutButton.
+        Typecheck clean, 8/8 vitest, pnpm build OK.
+[x] T13 Acceptance: 19/19 backend tests, 58 sdk pass (8 pre-existing fail
+        unchanged), uvicorn + worker boot side-by-side, /health → {"ok":true}
+
+Tech added: fastapi 0.136.1, uvicorn 0.47.0, clerk-backend-api 5.0.6,
+svix 1.93.0, sse-starlette 3.4.4, fasteners 0.20, pytest-asyncio 1.3.0
+Plan: docs/superpowers/plans/2026-05-18-m2-backend-skeleton.md
+
+MANUAL STEPS still required (gated on user):
+   - Clerk dashboard: add webhook endpoint http://localhost:8000/webhooks/clerk
+     (or ngrok URL), subscribe user.created + user.deleted, paste signing
+     secret into backend/.env as CLERK_WEBHOOK_SECRET
+   - Fill backend/scripts/seed_users.json (gitignored) with real emails for
+     shivang/krishna/anushthan/sambhav
+   - cd backend && uv run python -m scripts.seed_existing_users
 
 
 ## M3 — Persona builder wizard  (waiting on M2)
