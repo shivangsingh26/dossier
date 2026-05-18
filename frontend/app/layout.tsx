@@ -33,24 +33,60 @@ export default function RootLayout({
     <ClerkProvider
       appearance={{
         variables: {
+          // Brand
           colorPrimary: "#f97316",
-          colorBackground: "#1a1410",
-          colorInputBackground: "#251d18",
-          colorInputText: "#f5ebe0",
-          colorText: "#f5ebe0",
-          colorTextSecondary: "#a89589",
-          colorNeutral: "#f5ebe0",
           colorDanger: "#ef4444",
           colorSuccess: "#4ade80",
           colorWarning: "#fbbf24",
-          fontFamily: "var(--font-cabinet)",
+
+          // Surfaces
+          colorBackground: "#1a1410",
+          colorInputBackground: "#251d18",
+          colorNeutral: "#f5ebe0",
+
+          // Text — legacy v6 names
+          colorText: "#f5ebe0",
+          colorTextSecondary: "#a89589",
+          colorTextOnPrimaryBackground: "#1a1410",
+          colorInputText: "#f5ebe0",
+
+          // v7+ shadcn-aligned names (Clerk migrated to these)
+          colorForeground: "#f5ebe0",
+          colorMuted: "#251d18",
+          colorMutedForeground: "#a89589",
+          colorBorder: "#44342a",
+          colorInput: "#251d18",
+          colorInputForeground: "#f5ebe0",
+
+          fontFamily: 'var(--font-cabinet), "Inter", system-ui, sans-serif',
+          fontFamilyButtons: 'var(--font-cabinet), "Inter", system-ui, sans-serif',
+          fontWeight: { normal: "400", medium: "500", semibold: "700", bold: "800" },
           borderRadius: "10px",
         },
         elements: {
-          card: "bg-[color:var(--color-surface)] border border-[color:var(--color-border-2)]/40 shadow-[var(--shadow-modal)]",
-          headerTitle: "text-[color:var(--color-text)]",
+          rootBox: "w-full",
+          card: "bg-[#251d18] border border-[#44342a] shadow-[0_24px_60px_rgba(0,0,0,0.6)]",
+          cardBox: "bg-[#251d18]",
+          headerTitle: "text-[#f5ebe0]",
+          headerSubtitle: "text-[#a89589]",
+          formFieldLabel: "text-[#f5ebe0]",
+          formFieldInput:
+            "bg-[#15100d] text-[#f5ebe0] border border-[#44342a] placeholder:text-[#7a695a]",
+          formFieldHintText: "text-[#a89589]",
           formButtonPrimary:
-            "bg-primary hover:opacity-90 text-primary-foreground",
+            "bg-[#f97316] hover:bg-[#ea580c] text-[#1a1410] font-semibold",
+          footerActionText: "text-[#a89589]",
+          footerActionLink: "text-[#f97316] hover:text-[#fdba74]",
+          dividerLine: "bg-[#44342a]",
+          dividerText: "text-[#7a695a]",
+          socialButtonsBlockButton:
+            "bg-[#15100d] text-[#f5ebe0] border border-[#44342a] hover:bg-[#1a1410]",
+          socialButtonsBlockButtonText: "text-[#f5ebe0]",
+          identityPreviewText: "text-[#f5ebe0]",
+          identityPreviewEditButton: "text-[#f97316]",
+          formResendCodeLink: "text-[#f97316]",
+          otpCodeFieldInput: "bg-[#15100d] text-[#f5ebe0] border-[#44342a]",
+          alertText: "text-[#f5ebe0]",
         },
       }}
     >
