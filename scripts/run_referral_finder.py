@@ -132,10 +132,10 @@ def _print_referrals(referrals: list[dict], job_id: str) -> None:
 
 def run(job_id: str, no_csv: bool = False) -> None:
     """Run the full referral finder pipeline for a given job_id."""
-    from config import Config
-    from agents.referral_finder import run_referral_finder
-    from core.llm_client import LLMClient
-    from core.logger import get_logger
+    from dossier_sdk.config import Config
+    from dossier_sdk.agents.referral_finder import run_referral_finder
+    from dossier_sdk.core.llm_client import LLMClient
+    from dossier_sdk.core.logger import get_logger
     logger = get_logger(__name__)
 
     config = Config()
@@ -224,7 +224,7 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    from config import Config
+    from dossier_sdk.config import Config
     Config(user=args.user)
 
     config = Config()

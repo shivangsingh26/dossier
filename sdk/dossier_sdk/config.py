@@ -23,6 +23,13 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 
+# Repo root is 3 parents up from this file: sdk/dossier_sdk/config.py
+#   parents[0] = dossier_sdk/
+#   parents[1] = sdk/
+#   parents[2] = <repo root>
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+_PACKAGE_DIR = Path(__file__).resolve().parent  # sdk/dossier_sdk/
+
 
 class Config:
     _instance = None  # Stores the one shared instance across the entire program
@@ -37,8 +44,10 @@ class Config:
         return cls._instance
 
     def _load(self, user: str) -> None:
-        # Reads the .env file from the project root into os.environ
-        load_dotenv()
+        # Reads the .env file from the repo root (not cwd) into os.environ.
+        # Anchoring to _REPO_ROOT lets the SDK be imported from any cwd
+        # (CLI from repo root, FastAPI from backend/, pytest from sdk/, etc.).
+        load_dotenv(_REPO_ROOT / ".env")
 
         # --- Required keys: missing = loud error at startup ---
         self.openai_api_key: str = self._require("OPENAI_API_KEY")
@@ -96,18 +105,20 @@ class Config:
 
         # --- Per-user paths: all scoped under profile/{user}/ and data/{user}/ ---
         # Every agent reads from these — changing user at startup isolates everything.
+        # All paths anchored to repo root (not cwd) so the SDK works from any directory.
         self.user: str = user
-        self.profile_dir: Path = Path("profile") / user
-        self.profile_path: Path = Path("profile") / user / "profile.json"
-        self.data_dir: Path = Path("data") / user
+        self.profile_dir: Path = _REPO_ROOT / "profile" / user
+        self.profile_path: Path = _REPO_ROOT / "profile" / user / "profile.json"
+        self.data_dir: Path = _REPO_ROOT / "data" / user
         self.artifacts_dir: Path = self.data_dir / "artifacts"
         self.db_path: Path = self.data_dir / "dossier.db"
 
         # --- Shared paths (same for all users — not scoped by user) ---
-        self.prompts_dir: Path = Path("prompts")
-        self.target_companies_path: Path = Path("profile") / "target_companies.json"
-        self.exception_companies_path: Path = Path("profile") / "exception_companies.json"
-        self.linkedin_id_cache_path: Path = Path("data") / "linkedin_company_ids.json"
+        # prompts/ lives inside the SDK package (moved in M0 Task 3), not at repo root.
+        self.prompts_dir: Path = _PACKAGE_DIR / "prompts"
+        self.target_companies_path: Path = _REPO_ROOT / "profile" / "target_companies.json"
+        self.exception_companies_path: Path = _REPO_ROOT / "profile" / "exception_companies.json"
+        self.linkedin_id_cache_path: Path = _REPO_ROOT / "data" / "linkedin_company_ids.json"
 
     def _require(self, key: str) -> str:
         # Reads a required env var. Raises immediately with a clear message if missing.

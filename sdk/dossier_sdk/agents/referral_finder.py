@@ -38,8 +38,8 @@ from typing import Optional
 
 import requests
 
-from config import Config
-from core.llm_client import LLMClient
+from dossier_sdk.config import Config
+from dossier_sdk.core.llm_client import LLMClient
 
 logger = logging.getLogger(__name__)
 

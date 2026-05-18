@@ -34,8 +34,8 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    from config import Config
+    from dossier_sdk.config import Config
     Config(user=args.user)
 
-    from agents.job_discovery import run
+    from dossier_sdk.agents.job_discovery import run
     run(hours_old=args.hours, min_score=args.min_score)

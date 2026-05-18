@@ -8,7 +8,7 @@ Import from here rather than duplicating logic in each agent.
 import json
 import re
 
-from core.logger import get_logger
+from dossier_sdk.core.logger import get_logger
 
 logger = get_logger(__name__)
 

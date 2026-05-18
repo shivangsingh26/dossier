@@ -60,9 +60,9 @@ import requests
 from rich.console import Console
 from rich.table import Table
 
-from config import Config
-from core.llm_client import LLMClient
-from core.logger import get_logger
+from dossier_sdk.config import Config
+from dossier_sdk.core.llm_client import LLMClient
+from dossier_sdk.core.logger import get_logger
 
 logger = get_logger(__name__)
 console = Console()

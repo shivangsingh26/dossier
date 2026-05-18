@@ -148,7 +148,7 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    from config import Config
+    from dossier_sdk.config import Config
     Config(user=args.user)
     config      = Config()
     data_dir    = config.data_dir
@@ -197,7 +197,7 @@ def main() -> None:
         )
         t0 = time.monotonic()
         try:
-            from agents.market_intel_agent import run as _market_intel
+            from dossier_sdk.agents.market_intel_agent import run as _market_intel
             discovered = _market_intel() or []
             summary["stages_run"].append("market_intel")
             watchlist_adds = sum(1 for c in discovered if c.get("pipeline_stage") == "watchlist")
@@ -220,7 +220,7 @@ def main() -> None:
         )
         t0 = time.monotonic()
         try:
-            from agents.job_discovery import run as _discover
+            from dossier_sdk.agents.job_discovery import run as _discover
             discovery_jobs = _discover(hours_old=args.hours, min_score=args.min_score) or []
             summary["discovery_jobs"] = len(discovery_jobs)
             summary["stages_run"].append("discovery")
@@ -242,7 +242,7 @@ def main() -> None:
         )
         t0 = time.monotonic()
         try:
-            from agents.watchlist_agent import run as _watchlist
+            from dossier_sdk.agents.watchlist_agent import run as _watchlist
             watchlist_jobs = _watchlist(min_score=args.min_score, location=args.location) or []
             summary["watchlist_jobs"] = len(watchlist_jobs)
             summary["stages_run"].append("watchlist")
@@ -264,8 +264,8 @@ def main() -> None:
         )
         t0 = time.monotonic()
         try:
-            from agents.company_intel import print_intel_summary
-            from agents.company_intel import run as _company_intel
+            from dossier_sdk.agents.company_intel import print_intel_summary
+            from dossier_sdk.agents.company_intel import run as _company_intel
 
             # company-intel mode: load results from last run since stages 1 & 2 were skipped
             if args.mode == "company-intel":
@@ -307,7 +307,7 @@ def main() -> None:
         )
         t0 = time.monotonic()
         try:
-            from agents.gap_analysis import run as _gap_analysis
+            from dossier_sdk.agents.gap_analysis import run as _gap_analysis
             # force=False → only processes JDs that don't have gap.json yet (new jobs only)
             result = _gap_analysis(force=False, min_score=args.min_score) or {}
             processed = result.get("new_extracted", 0)
@@ -337,7 +337,7 @@ def main() -> None:
         t0 = time.monotonic()
         total_referrals = 0
         try:
-            from agents.referral_finder import run_referral_finder
+            from dossier_sdk.agents.referral_finder import run_referral_finder
             for job in target_jobs:
                 job_id = job["job_id"]
                 try:

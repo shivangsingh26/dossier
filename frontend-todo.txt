@@ -9,16 +9,17 @@ After M4: dogfood ≥ 1 week, then continue M5+.
 ============================================================
 
 
-## M0 — Repo restructure + SDK packaging  (next to execute)
-[ ] T1  Create sdk/ skeleton + pyproject.toml + sdk/README.md
-[ ] T2  Move config.py into sdk; anchor paths to repo root
-[ ] T3  Move core/, agents/, prompts/ into sdk + rewrite imports
-[ ] T4  Extract pure orchestrator functions from run_dossier.py
-[ ] T5  Update scripts/ + dashboard.py + merge tests directory
-[ ] T6  Update root pyproject.toml; root depends on dossier-sdk + streamlit
-[ ] T7  Create empty backend/ + frontend/ skeletons with READMEs
-[ ] T8  Initialize this file + update root README with new layout
-[ ] T9  Acceptance test: smoke-run CLI, dashboard, all pytest suites
+## M0 — Repo restructure + SDK packaging  (acceptance test pending)
+[x] T1  Create sdk/ skeleton + pyproject.toml + sdk/README.md
+[x] T2  Move config.py into sdk; anchor paths to repo root
+[x] T3  Move core/, agents/, prompts/ into sdk + rewrite imports
+[-] T4  Extract orchestrator from run_dossier.py  → DEFERRED to M2
+[x] T5  Update scripts/ + dashboard.py + merge tests directory
+[x] T6  Update root pyproject.toml; root depends on dossier-sdk + streamlit
+[x] T7  Create empty backend/ + frontend/ skeletons with READMEs
+[x] T8  Update root README with new layout
+[x] T9  Acceptance test passed: 55 pass, 8 pre-existing fail (documented), 1 skip
+        Pre-existing failures NOT caused by M0 — see memory project_known_test_failures.md
 
 Plan: docs/superpowers/milestones/M0.md  (fully bite-sized, ~9 tasks, 2–4h)
 

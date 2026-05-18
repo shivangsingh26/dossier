@@ -37,10 +37,10 @@ import requests
 from rich.console import Console
 from rich.table import Table
 
-from config import Config
-from core.intel_cache import get_cached_intel, save_intel_cache
-from core.llm_client import LLMClient
-from core.logger import get_logger
+from dossier_sdk.config import Config
+from dossier_sdk.core.intel_cache import get_cached_intel, save_intel_cache
+from dossier_sdk.core.llm_client import LLMClient
+from dossier_sdk.core.logger import get_logger
 
 logger = get_logger(__name__)
 console = Console()
@@ -343,7 +343,7 @@ def run(jobs: list[dict], min_score: int = 7) -> list[dict]:
 
     n = len(company_to_jobs)
     console.print(f"  {len(high_score)} jobs (score ≥ {min_score}) across {n} companies")
-    from core.intel_cache import is_intel_fresh
+    from dossier_sdk.core.intel_cache import is_intel_fresh
     uncached = sum(1 for c in company_to_jobs if not is_intel_fresh(c))
     console.print(f"  Tavily credits this run: ~{uncached * 2} of 1,000 free/month ({n - uncached} cached)\n")
 

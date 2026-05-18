@@ -27,12 +27,12 @@ from jobspy import scrape_jobs
 from rich.console import Console
 from rich.table import Table
 
-from config import Config
-from core.db import get_seen_count, init_db, is_job_seen, mark_job_seen
-from core.file_vault import save_jd, save_scorecard
-from core.linkedin_scraper import scrape_linkedin_jobs
-from core.llm_client import LLMClient
-from core.logger import get_logger
+from dossier_sdk.config import Config
+from dossier_sdk.core.db import get_seen_count, init_db, is_job_seen, mark_job_seen
+from dossier_sdk.core.file_vault import save_jd, save_scorecard
+from dossier_sdk.core.linkedin_scraper import scrape_linkedin_jobs
+from dossier_sdk.core.llm_client import LLMClient
+from dossier_sdk.core.logger import get_logger
 
 logger = get_logger(__name__)
 console = Console()

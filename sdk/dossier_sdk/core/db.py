@@ -23,8 +23,8 @@ DEDUP SCOPE:
 import sqlite3
 from datetime import datetime, timezone
 
-from config import Config
-from core.logger import get_logger
+from dossier_sdk.config import Config
+from dossier_sdk.core.logger import get_logger
 
 logger = get_logger(__name__)
 

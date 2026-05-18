@@ -57,11 +57,11 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    from config import Config
+    from dossier_sdk.config import Config
     Config(user=args.user)
 
-    from core.logger import get_logger, setup_logging
-    from agents.gap_analysis import run as run_gap_analysis
+    from dossier_sdk.core.logger import get_logger, setup_logging
+    from dossier_sdk.agents.gap_analysis import run as run_gap_analysis
 
     logger = get_logger(__name__)
 

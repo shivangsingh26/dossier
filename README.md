@@ -1,5 +1,20 @@
 <a name="readme-top"></a>
 
+> **Repo layout (post M0 — May 2026):**
+> - [`sdk/`](sdk/) — installable Python SDK (`dossier-sdk`). Contains all agents, core utilities, prompts, config.
+> - [`backend/`](backend/) — FastAPI service (starts M2). Wraps the SDK with HTTP + Clerk auth + credits.
+> - [`frontend/`](frontend/) — Next.js 16 SaaS web app (starts M1). Replaces `dashboard.py` after M4.
+> - [`dashboard.py`](dashboard.py) — Legacy Streamlit dashboard. Still works during transition. Retired post-M4.
+> - [`data/`](data/), [`profile/`](profile/) — Unchanged. Per-user pipeline data + persona files.
+> - [`scripts/`](scripts/) — CLI entry scripts. Updated to import from `dossier_sdk`.
+> - [`docs/superpowers/specs/`](docs/superpowers/specs/) — Design specs.
+> - [`docs/superpowers/milestones/`](docs/superpowers/milestones/) — Per-milestone implementation plans (M0–M11).
+> - [`frontend-todo.txt`](frontend-todo.txt) — Live aggregated task tracker across milestones.
+>
+> **Quick install:** `uv sync` from repo root installs everything (SDK editable + dashboard deps).
+> **Run pipeline:** `python run_dossier.py --user shivang --mode quick`
+> **Run dashboard:** `streamlit run dashboard.py`
+
 <div align="center">
 
 <br/>
