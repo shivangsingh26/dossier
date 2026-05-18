@@ -1,23 +1,54 @@
 # backend — Dossier FastAPI service
 
-Empty placeholder. Implementation starts in **M2** — see `docs/superpowers/milestones/M2.md`.
+FastAPI app (`:8000`) backing the Next.js frontend. Wraps `dossier-sdk` agents.
 
-## Planned contents
-
-- `pyproject.toml` declaring `dossier-api` package (depends on `../sdk` via path)
-- `src/dossier_api/main.py` — FastAPI app with Clerk JWT auth + CORS
-- `src/dossier_api/routers/` — `auth`, `me`, `persona` (M3), `jobs` (M4), `pipeline` (M4), `admin` (M5)
-- `src/dossier_api/db.py` — `accounts.db` schema + migrations (users, credits, pipeline_runs)
-- `src/dossier_api/workers/pipeline_worker.py` — standalone Python worker that polls `accounts.db` for queued runs and executes them via `dossier_sdk.orchestrator` (also created in M2 — extracted from `run_dossier.py`)
-- `tests/`
-
-## Has its own venv
+## Install
 
 ```bash
-cd backend && uv venv && uv pip install -e .
+cd backend
+uv sync                    # creates .venv and installs deps + dossier-sdk (editable, ../sdk)
+cp .env.example .env       # then fill in Clerk keys
 ```
 
-Depends on `dossier-sdk` (editable, via `../sdk`).
+## Run dev
+
+```bash
+uv run uvicorn dossier_api.main:app --reload --port 8000
+```
+
+In a second terminal, start the worker:
+
+```bash
+uv run python -m dossier_api.workers.pipeline_worker
+```
+
+## Tests
+
+```bash
+uv run pytest -v
+```
+
+## Seed existing users (one-time)
+
+Edit `scripts/seed_users.json` (gitignored) with the 4 existing users' emails, then:
+
+```bash
+uv run python -m dossier_api.scripts.seed_existing_users
+```
+
+Idempotent — re-running skips users whose `clerk_id` already exists.
+
+## Layout
+
+| Path | Purpose |
+|---|---|
+| `src/dossier_api/main.py` | FastAPI app, lifespan(init_db), CORS |
+| `src/dossier_api/settings.py` | env loader singleton |
+| `src/dossier_api/db.py` | `accounts.db` schema + helpers |
+| `src/dossier_api/deps.py` | `get_current_user`, `require_admin` |
+| `src/dossier_api/routers/` | health, me, webhooks (M3+: persona, jobs, pipeline, admin) |
+| `src/dossier_api/workers/pipeline_worker.py` | polls queued runs; M4 wires to orchestrator |
+| `scripts/seed_existing_users.py` | seeds existing 4 users into Clerk + accounts.db |
 
 ## Cost
 
