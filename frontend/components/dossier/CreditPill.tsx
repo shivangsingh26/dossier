@@ -1,13 +1,13 @@
 type CreditPillProps = {
-  used?: number;
-  total?: number;
+  credits: number;
+  creditsTotal?: number;
 };
 
 /**
- * Static placeholder for M1. M2 wires this to GET /me { credits, credits_total }.
+ * Real-data credit pill (M2). Total defaults to a sensible per-tier ceiling
+ * picked by the layout; pill itself just renders what it's given.
  */
-export function CreditPill({ used = 0, total = 100 }: CreditPillProps) {
-  const remaining = total - used;
+export function CreditPill({ credits, creditsTotal }: CreditPillProps) {
   return (
     <span
       className="inline-flex items-center gap-1.5 rounded-full border border-[color:var(--color-border-2)]/60 bg-[color:var(--color-surface)] px-3 py-1.5 text-sm"
@@ -16,9 +16,13 @@ export function CreditPill({ used = 0, total = 100 }: CreditPillProps) {
     >
       <span aria-hidden className="text-primary">⚡</span>
       <span className="text-[color:var(--color-text)] tabular-nums">
-        {remaining}
+        {credits.toLocaleString()}
       </span>
-      <span className="text-[color:var(--color-text-subtle)]">/ {total}</span>
+      {creditsTotal !== undefined && (
+        <span className="text-[color:var(--color-text-subtle)]">
+          / {creditsTotal.toLocaleString()}
+        </span>
+      )}
     </span>
   );
 }
