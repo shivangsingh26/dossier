@@ -1,7 +1,7 @@
 # Dossier SaaS frontend — live task tracker
 # Synced with docs/superpowers/milestones/M*.md
 # Status keys: [ ] todo · [~] in progress · [x] done · [-] cancelled
-# Last updated: 2026-05-18
+# Last updated: 2026-05-18 (M1 shipped)
 
 ============================================================
 MVP path: M0 → M1 → M2 → M3 → M4 = first usable web product.
@@ -24,15 +24,33 @@ After M4: dogfood ≥ 1 week, then continue M5+.
 Plan: docs/superpowers/milestones/M0.md  (fully bite-sized, ~9 tasks, 2–4h)
 
 
-## M1 — Frontend skeleton + Clerk auth + theme  (waiting on M0)
-[ ] Stub plan: docs/superpowers/milestones/M1.md
-[ ] Estimated: 11 tasks, 6–10h
-Key deliverables:
-   - Next.js 16 + Tailwind v4 + shadcn/ui in frontend/
-   - Warm-mocha theme tokens + Fraunces/Geist fonts
-   - Split-D mark + Fraunces wordmark SVG components
-   - Marketing hero + pricing pages
-   - Clerk sign-in / sign-up + protected app shell with sidebar
+## M1 — Frontend skeleton + Clerk auth + theme  (DONE 2026-05-18)
+[x] T1  Scaffold Next.js 16 in frontend/ (pnpm, TS strict, Tailwind v4, Turbopack)
+[x] T2  Warm-mocha tokens + fonts (initially Fraunces+Geist, later replaced)
+[x] T3  shadcn/ui init (radix-nova preset) + Button/Card/Avatar primitives
+[x] T4  Brand components: Mark (Split-D SVG), Wordmark, Lockup + Vitest 8 unit tests
+[x] T5  Marketing layout: MarketingNav + MarketingFooter + (marketing)/layout.tsx
+[x] T6  Hero landing page (initial bare version)
+[x] T6.5 Marketing redesign — added per user feedback, scope creep but worth it:
+        - 7 sections: Hero, TerminalLog (motion-animated CLI), HowItWorks, AgentsGrid,
+          JobCardPreview (real DB data: CRED, Zimmer Biomet, GetSetYo, Razorpay),
+          PricingTeaser, FinalCta
+        - Reveal + CountUp motion helpers
+        - Parallax hero glow, scroll-reveal staggers, hover lifts, pulsing final CTA
+        - Dropped Fraunces (old-school) → Cabinet Grotesk via next/font/local
+        - font-extrabold 800 headlines, tracking -0.035em — Huntr-style punch
+        - Bugfix: @theme inline { --font-sans: var(--font-sans) } recursion fixed
+        - Single peach emphasis (dropped peach→mint gradient as jarring)
+[x] T7  Pricing page: 3 tiers (Lite ₹0 / Pro ₹999 / Max ₹2,999) with Most Popular badge
+[x] T8  Clerk install + ClerkProvider mocha theme + clerkMiddleware route protection
+[x] T9  Sign-in + sign-up catch-all pages with forceRedirectUrl=/dashboard
+[x] T10 App shell — Sidebar (8 nav items, PRO/MAX badges, UserButton) + CreditPill + auth gate
+[x] T11 Dashboard page: Welcome + 3 cards (Next step, Credits, Tier)
+[x] T12 Acceptance verified: typecheck + 8/8 tests + build + manual flow (sign-up → dashboard)
+
+Tech added: @clerk/nextjs 7.3.5, motion 12.38, Cabinet Grotesk woff2 (next/font/local),
+Vitest 4 + @testing-library/react, shadcn/ui (radix base)
+Plan: docs/superpowers/milestones/M1.md
 
 
 ## M2 — Backend skeleton + Clerk webhook + accounts DB + worker  (waiting on M1)
