@@ -184,10 +184,10 @@ def run(job_id: str, use_version: bool = False) -> None:
     Run tailor_resume + generate_cover_letter + PDF compilation for the given job_id.
     If use_version=True, saves to resume_v{N}.tex instead of overwriting resume.tex.
     """
-    from config import Config
-    from agents.resume_agent import tailor_resume, generate_cover_letter
-    from core.llm_client import LLMClient
-    from core.logger import get_logger
+    from dossier_sdk.config import Config
+    from dossier_sdk.agents.resume_agent import tailor_resume, generate_cover_letter
+    from dossier_sdk.core.llm_client import LLMClient
+    from dossier_sdk.core.logger import get_logger
     logger = get_logger(__name__)
 
     config = Config()
@@ -279,7 +279,7 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    from config import Config
+    from dossier_sdk.config import Config
     Config(user=args.user)
 
     config = Config()

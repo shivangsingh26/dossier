@@ -19,7 +19,7 @@ from pathlib import Path
 # Add project root to sys.path so imports work when run from any directory
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from agents.market_intel_agent import run
+from dossier_sdk.agents.market_intel_agent import run
 
 
 def main() -> None:

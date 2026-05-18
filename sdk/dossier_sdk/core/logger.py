@@ -65,7 +65,7 @@ def get_logger(name: str) -> logging.Logger:
     Return a named logger for a module. Call with __name__ from any module.
 
     Example:
-        from core.logger import get_logger
+        from dossier_sdk.core.logger import get_logger
         logger = get_logger(__name__)
         logger.info("Job discovery started")
 
@@ -73,7 +73,7 @@ def get_logger(name: str) -> logging.Logger:
     """
     # Lazy import to avoid circular dependency at module level
     try:
-        from config import Config
+        from dossier_sdk.config import Config
         log_level = Config().log_level
     except Exception:
         log_level = "INFO"

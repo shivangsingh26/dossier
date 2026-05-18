@@ -15,7 +15,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from config import Config
+from dossier_sdk.config import Config
 
 
 if __name__ == "__main__":
@@ -33,7 +33,7 @@ if __name__ == "__main__":
     # Initialise Config with the user BEFORE importing the agent
     Config(user=args.user)
 
-    from agents.persona_builder import run
+    from dossier_sdk.agents.persona_builder import run
 
     answers_path = Path(args.answers) if args.answers else None
     if answers_path and not answers_path.exists():

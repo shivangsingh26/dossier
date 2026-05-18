@@ -42,10 +42,10 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    from config import Config
+    from dossier_sdk.config import Config
     Config(user=args.user)
 
-    from agents.watchlist_agent import run
+    from dossier_sdk.agents.watchlist_agent import run
     run(min_score=args.min_score, location=args.location)
 
 

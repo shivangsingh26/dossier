@@ -42,11 +42,11 @@ from rich.console import Console
 from rich.table import Table
 from rich.rule import Rule
 
-from config import Config
-from core.file_vault import get_job_dir
-from core.llm_client import LLMClient
-from core.logger import get_logger
-from core.utils import parse_json_response
+from dossier_sdk.config import Config
+from dossier_sdk.core.file_vault import get_job_dir
+from dossier_sdk.core.llm_client import LLMClient
+from dossier_sdk.core.logger import get_logger
+from dossier_sdk.core.utils import parse_json_response
 
 logger = get_logger(__name__)
 console = Console()

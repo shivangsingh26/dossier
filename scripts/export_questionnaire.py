@@ -17,7 +17,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from agents.persona_builder import INTERVIEW_QUESTIONS
+from dossier_sdk.agents.persona_builder import INTERVIEW_QUESTIONS
 
 # Q7 is ML-specific in the default interview — override with a generic version
 GENERIC_Q7 = (

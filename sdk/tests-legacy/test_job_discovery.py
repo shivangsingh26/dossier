@@ -17,8 +17,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from config import Config
-from agents.job_discovery import (
+from dossier_sdk.config import Config
+from dossier_sdk.agents.job_discovery import (
     compute_experience_band,
     build_candidate_summary,
     build_scoring_system_prompt,

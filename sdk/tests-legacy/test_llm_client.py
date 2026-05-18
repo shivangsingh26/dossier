@@ -16,8 +16,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from config import Config
-from core.llm_client import LLMClient
+from dossier_sdk.config import Config
+from dossier_sdk.core.llm_client import LLMClient
 
 config = Config()
 llm    = LLMClient()

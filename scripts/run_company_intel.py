@@ -56,10 +56,10 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    from config import Config
+    from dossier_sdk.config import Config
     Config(user=args.user)
 
-    from agents.company_intel import print_intel_summary, run
+    from dossier_sdk.agents.company_intel import print_intel_summary, run
 
     console.print("\n[bold]Dossier — Company Intel Agent[/bold]")
     console.print("━" * 50)

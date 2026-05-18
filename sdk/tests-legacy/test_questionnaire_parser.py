@@ -3,7 +3,7 @@ import os
 import pytest
 from pathlib import Path
 from unittest.mock import patch
-from agents.persona_builder import find_user_pdfs, parse_questionnaire_file, parse_questionnaire_file_from_string, INTERVIEW_QUESTIONS
+from dossier_sdk.agents.persona_builder import find_user_pdfs, parse_questionnaire_file, parse_questionnaire_file_from_string, INTERVIEW_QUESTIONS
 
 
 def test_find_user_pdfs_detects_linkedin_by_name(tmp_path):
