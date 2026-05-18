@@ -353,7 +353,7 @@ dependencies = [
     { name = "streamlit" },
 ]
 
-[package.optional-dependencies]
+[package.dev-dependencies]
 dev = [
     { name = "pytest" },
     { name = "pytest-asyncio" },
@@ -364,12 +364,15 @@ dev = [
 requires-dist = [
     { name = "dossier-sdk", editable = "sdk" },
     { name = "pandas", specifier = ">=2.3.3" },
-    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.3.0" },
-    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.24.0" },
-    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.7.0" },
     { name = "streamlit", specifier = ">=1.57.0" },
 ]
-provides-extras = ["dev"]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = ">=8.3.0" },
+    { name = "pytest-asyncio", specifier = ">=0.24.0" },
+    { name = "ruff", specifier = ">=0.7.0" },
+]
 
 [[package]]
 name = "dossier-sdk"
@@ -403,15 +406,18 @@ requires-dist = [
     { name = "openai", specifier = ">=2.33.0" },
     { name = "pandas", specifier = ">=2.3.3" },
     { name = "pymupdf", specifier = ">=1.27.2.3" },
-    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.3.0" },
     { name = "python-dotenv", specifier = ">=1.2.2" },
     { name = "python-jobspy", specifier = ">=1.1.82" },
     { name = "python-telegram-bot", specifier = ">=22.7" },
     { name = "requests", specifier = ">=2.33.1" },
     { name = "rich", specifier = ">=15.0.0" },
-    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.7.0" },
 ]
-provides-extras = ["dev"]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = ">=8.3.0" },
+    { name = "ruff", specifier = ">=0.7.0" },
+]
 
 [[package]]
 name = "gitdb"
