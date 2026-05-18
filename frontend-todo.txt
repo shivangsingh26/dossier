@@ -1,0 +1,103 @@
+# Dossier SaaS frontend — live task tracker
+# Synced with docs/superpowers/milestones/M*.md
+# Status keys: [ ] todo · [~] in progress · [x] done · [-] cancelled
+# Last updated: 2026-05-18
+
+============================================================
+MVP path: M0 → M1 → M2 → M3 → M4 = first usable web product.
+After M4: dogfood ≥ 1 week, then continue M5+.
+============================================================
+
+
+## M0 — Repo restructure + SDK packaging  (next to execute)
+[ ] T1  Create sdk/ skeleton + pyproject.toml + sdk/README.md
+[ ] T2  Move config.py into sdk; anchor paths to repo root
+[ ] T3  Move core/, agents/, prompts/ into sdk + rewrite imports
+[ ] T4  Extract pure orchestrator functions from run_dossier.py
+[ ] T5  Update scripts/ + dashboard.py + merge tests directory
+[ ] T6  Update root pyproject.toml; root depends on dossier-sdk + streamlit
+[ ] T7  Create empty backend/ + frontend/ skeletons with READMEs
+[ ] T8  Initialize this file + update root README with new layout
+[ ] T9  Acceptance test: smoke-run CLI, dashboard, all pytest suites
+
+Plan: docs/superpowers/milestones/M0.md  (fully bite-sized, ~9 tasks, 2–4h)
+
+
+## M1 — Frontend skeleton + Clerk auth + theme  (waiting on M0)
+[ ] Stub plan: docs/superpowers/milestones/M1.md
+[ ] Estimated: 11 tasks, 6–10h
+Key deliverables:
+   - Next.js 16 + Tailwind v4 + shadcn/ui in frontend/
+   - Warm-mocha theme tokens + Fraunces/Geist fonts
+   - Split-D mark + Fraunces wordmark SVG components
+   - Marketing hero + pricing pages
+   - Clerk sign-in / sign-up + protected app shell with sidebar
+
+
+## M2 — Backend skeleton + Clerk webhook + accounts DB + worker  (waiting on M1)
+[ ] Stub plan: docs/superpowers/milestones/M2.md
+[ ] Estimated: 10–12 tasks, 6–10h
+Key deliverables:
+   - FastAPI app + accounts.db schema
+   - Clerk JWT middleware + signup webhook
+   - Seed script for existing 4 users (shivang, krishna, anushthan, sambhav)
+   - pipeline_worker.py boilerplate (idle loop)
+   - Frontend CreditPill wired to real /me
+
+
+## M3 — Persona builder wizard  (waiting on M2)
+[ ] Stub plan: docs/superpowers/milestones/M3.md
+[ ] Estimated: 12–14 tasks, 8–14h
+Key deliverables:
+   - 4-step wizard: Upload PDFs → Targets → Chat quiz → Review
+   - SSE-streamed 12-Q chat using AI Elements
+   - Backend /persona/* endpoints wrapping persona_builder
+   - Synthesis runs on worker, persona.json saved
+
+
+## M4 — Job inbox + pipeline run + SSE progress  (waiting on M3) — MVP CLOSER
+[ ] Stub plan: docs/superpowers/milestones/M4.md
+[ ] Estimated: 14–16 tasks, 10–16h
+Key deliverables:
+   - /jobs page: KPI strip + tabs + JobCard + JobDetail
+   - RunButton with credit-cost confirm dialog
+   - POST /pipeline/run + SSE /pipeline/runs/{id}/stream
+   - Credit gate: atomic deduct + refund on failure
+   - Streamlit dashboard.py retired post-M4
+
+==> MVP complete after M4. Stop, dogfood, then continue.
+
+
+## M5 — Admin dashboard  (post-MVP)
+[ ] Stub plan: docs/superpowers/milestones/M5.md
+   - User mgmt, approvals, tier change, credit topup, companies editor
+
+## M6 — Watchlist + Company intel  (Pro tier features)
+[ ] Stub plan: docs/superpowers/milestones/M6.md
+
+## M7 — Gap analysis page  (Pro tier feature)
+[ ] Stub plan: docs/superpowers/milestones/M7.md
+
+## M8 — Resume tailor + cover letter  (Max tier feature)
+[ ] Stub plan: docs/superpowers/milestones/M8.md
+
+## M9 — Referral finder + cold message  (Max tier feature)
+[ ] Stub plan: docs/superpowers/milestones/M9.md
+
+## M10 — Market intel feed  (Max tier feature)
+[ ] Stub plan: docs/superpowers/milestones/M10.md
+
+## M11 — Payment integration  (DEFERRED until paying intent validated)
+[ ] Stub plan: docs/superpowers/milestones/M11.md
+   - Stripe / Razorpay decision at M11 start
+   - Do NOT start until 20+ Pro waitlist signups
+
+
+============================================================
+How to use this file:
+  - Open the milestone's M{N}.md file in a new Claude Code session
+  - Say "expand M{N}" if it's still a stub — Claude will fill in bite-sized tasks
+  - Execute tasks one at a time, tick checkboxes here as they complete
+  - When all tasks in a milestone are [x], add a [x] DONE line and move to next
+  - Update "Last updated" at top whenever you tick something
+============================================================
