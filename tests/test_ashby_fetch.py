@@ -6,7 +6,7 @@ to profile/target_companies.json (see Task 7 in the plan).
 """
 import pytest
 from unittest.mock import patch, MagicMock
-from dossier_sdk.agents.watchlist_agent import fetch_jobs_ashby
+from agents.watchlist_agent import fetch_jobs_ashby
 
 # Matches the Ashby public API schema documented in the project plan.
 # Three postings: one valid ML/India job, one non-ML (HR), one non-India (US).

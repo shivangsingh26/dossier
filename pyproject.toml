@@ -1,71 +1,35 @@
 [project]
 name = "dossier"
 version = "1.0.0"
-description = "Autonomous agentic job search system — profile-aware job discovery, company intel, referral outreach, and resume tailoring"
+description = "Autonomous agentic job search system — meta package wrapping dossier-sdk + Streamlit dashboard"
 readme = "README.md"
 requires-python = ">=3.12"
 authors = [
     { name = "Shivang Singh" }
 ]
 
+# Root depends on the local SDK in editable mode. All agent/core/prompt
+# deps come transitively through dossier-sdk. Only the Streamlit dashboard
+# (kept until M4 per docs/superpowers/specs/2026-05-18-...md §12) and pandas
+# (used by dashboard.py + a few agents) are direct here.
 dependencies = [
-    # --- LLM Providers ---
-    # openai: primary LLM for all high-volume tasks (job scoring, gap analysis, etc.)
-    "openai>=2.33.0",
-    # anthropic: used only for Resume Agent + Cover Letter (LaTeX precision + best writing)
-    "anthropic>=0.97.0",
-    # --- Config ---
-    # python-dotenv: loads .env file into os.environ at startup
-    "python-dotenv>=1.2.2",
-    # --- HTTP ---
-    # httpx: async-capable HTTP client — used for API calls in Step 2+
-    "httpx>=0.28.1",
-    # requests: simple sync HTTP — used for lightweight scraping and watchlist checks
-    "requests>=2.33.1",
-    # --- Database ---
-    # aiosqlite: async SQLite — job deduplication, run history, jd_skills storage
-    "aiosqlite>=0.22.1",
-    # --- Google Integration (Step 3+) ---
-    # gspread: read/write to Google Sheets — the live job tracker dashboard
-    "gspread>=6.2.1",
-    # google-auth + oauthlib: service account + OAuth2 flows for Sheets and Gmail
-    "google-auth>=2.50.0",
-    "google-auth-oauthlib>=1.3.1",
-    # --- Telegram (Step 2+) ---
-    # python-telegram-bot: URGENT job alerts, daily digest, human approval flows
-    # Note: v20+ requires asyncio. We use it in async context from Step 2 onward.
-    "python-telegram-bot>=22.7",
-    # --- PDF Parsing (Step 1 — Persona Builder) ---
-    # pymupdf: parse resume.pdf and linkedin.pdf into text for profile.json generation
-    # Import in code as: import fitz  (not pymupdf)
-    "pymupdf>=1.27.2.3",
-    # --- Terminal Output ---
-    # rich: pretty tables and formatted output in verify_setup.py and run scripts
-    "rich>=15.0.0",
-    # --- Job Search ---
-    # python-jobspy: scrapes LinkedIn, Indeed, Naukri, Google Jobs, Glassdoor in one call
-    # No API key needed. hours_old parameter filters for fresh listings only.
-    "python-jobspy>=1.1.82",
+    "dossier-sdk",
     "streamlit>=1.57.0",
     "pandas>=2.3.3",
 ]
 
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+[tool.uv.sources]
+dossier-sdk = { path = "./sdk", editable = true }
 
-[tool.hatch.build.targets.wheel]
-# When built as a package, include these source directories
-packages = ["agents", "core"]
-
-[tool.uv]
-# Dev dependencies — install with: uv add --dev <package>
-# These are not included when dossier is installed as a package
-dev-dependencies = [
+[dependency-groups]
+dev = [
     "pytest>=8.3.0",
     "pytest-asyncio>=0.24.0",
+    "ruff>=0.7.0",
 ]
 
-[tool.pytest.ini_options]
-asyncio_mode = "auto"
-testpaths = ["tests"]
+# No [tool.hatch.build.*] section — root is not a buildable package, just
+# a workspace pointer. All buildable code lives in sdk/ (and later backend/).
+
+# No [tool.pytest.ini_options] at root — tests live in sdk/tests/ now and
+# are configured by sdk/pyproject.toml. Run with:  cd sdk && uv run pytest

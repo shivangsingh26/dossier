@@ -3,7 +3,7 @@ import os
 import pytest
 from pathlib import Path
 from unittest.mock import patch
-from dossier_sdk.config import Config
+from config import Config
 
 
 @pytest.fixture(autouse=True)
