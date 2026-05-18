@@ -1,6 +1,9 @@
 # Secrets — never commit
 .env
 
+# Backend M2 — Clerk seed config with real user emails
+backend/scripts/seed_users.json
+
 # Personal profile data — never commit (name, salary, resume, writing samples)
 profile/profile.json
 profile/me/

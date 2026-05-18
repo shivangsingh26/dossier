@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+.env.local
+scripts/seed_users.json
+.pytest_cache/
