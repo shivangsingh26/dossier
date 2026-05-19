@@ -5,6 +5,7 @@ import { Stepper } from "@/components/dossier/wizard/Stepper";
 import { UploadStep } from "@/components/dossier/wizard/UploadStep";
 import { TargetsStep } from "@/components/dossier/wizard/TargetsStep";
 import { QuizStep } from "@/components/dossier/wizard/QuizStep";
+import { ReviewStep } from "@/components/dossier/wizard/ReviewStep";
 
 const STEPS = [
   { id: "upload", label: "Upload" },
@@ -33,9 +34,7 @@ export default function OnboardingPage() {
         {current === 0 && <UploadStep onComplete={() => setCurrent(1)} />}
         {current === 1 && <TargetsStep onComplete={() => setCurrent(2)} />}
         {current === 2 && <QuizStep onComplete={() => setCurrent(3)} />}
-        {current === 3 && (
-          <div className="text-[color:var(--color-text-muted)]">Review step placeholder — wired in Task 12.</div>
-        )}
+        {current === 3 && <ReviewStep />}
       </div>
 
       <div className="mt-6 flex justify-between">

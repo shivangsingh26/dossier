@@ -1,8 +1,9 @@
 import { auth } from "@clerk/nextjs/server";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { Sidebar } from "@/components/dossier/Sidebar";
 import { CreditPill } from "@/components/dossier/CreditPill";
-import { fetchMe } from "@/lib/server-api";
+import { fetchMe, fetchPersonaState } from "@/lib/server-api";
 import PendingReviewPage from "./pending/page";
 
 const CREDITS_BY_TIER = { lite: 50, pro: 500, max: 2000 } as const;
@@ -61,6 +62,15 @@ export default async function AppLayout({
         Account suspended.
       </div>
     );
+  }
+
+  const pathname = (await headers()).get("x-pathname") ?? "";
+  const onOnboarding = pathname.startsWith("/onboarding");
+  if (!onOnboarding) {
+    const personaState = await fetchPersonaState();
+    if (personaState && !personaState.synthesized) {
+      redirect("/onboarding");
+    }
   }
 
   const creditsTotal = CREDITS_BY_TIER[account.tier];

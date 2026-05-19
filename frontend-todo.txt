@@ -1,7 +1,7 @@
 # Dossier SaaS frontend — live task tracker
 # Synced with docs/superpowers/milestones/M*.md
 # Status keys: [ ] todo · [~] in progress · [x] done · [-] cancelled
-# Last updated: 2026-05-19 (M2 shipped)
+# Last updated: 2026-05-20 (M3 shipped)
 
 ============================================================
 MVP path: M0 → M1 → M2 → M3 → M4 = first usable web product.
@@ -95,14 +95,27 @@ MANUAL STEPS still required (gated on user):
    - cd backend && uv run python -m scripts.seed_existing_users
 
 
-## M3 — Persona builder wizard  (waiting on M2)
-[ ] Stub plan: docs/superpowers/milestones/M3.md
-[ ] Estimated: 12–14 tasks, 8–14h
-Key deliverables:
-   - 4-step wizard: Upload PDFs → Targets → Chat quiz → Review
-   - SSE-streamed 12-Q chat using AI Elements
-   - Backend /persona/* endpoints wrapping persona_builder
-   - Synthesis runs on worker, persona.json saved
+## M3 — Persona builder wizard  (DONE 2026-05-20)
+[x] T1  Backend persona router skeleton + GET /persona
+[x] T2  POST /persona/upload-pdf (multipart, 10MB cap)
+[x] T3  POST /persona/questionnaire + GET /persona/state
+[x] T4  GET /persona/quiz-questions + POST /persona/quiz-answers
+[x] T5  POST /persona/finalize + db helpers + GET /pipeline/runs/{id}
+[x] T6  PATCH /persona (deep merge)
+[x] T7  Worker dispatch table + persona_synthesis handler
+[x] T8  Frontend deps (react-hook-form, zod@3, react-dropzone) + persona-schema.ts + lib/api/persona.ts
+[x] T9  Wizard host + Stepper
+[x] T10 UploadStep + TargetsStep (react-dropzone + react-hook-form)
+[x] T11 QuizStep (chat UI, 13 hardcoded SDK questions; plan said 12, SDK actual is 13)
+[x] T12 ReviewStep + SynthesisProgress (poll /pipeline/runs/{id} every 2s)
+[x] T13 Onboarding gate (middleware x-pathname + layout redirect) + acceptance
+
+Plan: docs/superpowers/plans/2026-05-19-m3-persona-wizard.md
+Acceptance:
+   - 37/37 backend tests pass (was 19 + 18 M3)
+   - frontend: typecheck, 8/8 vitest, pnpm build all green
+   - /onboarding route registered; layout.tsx redirects active users
+     without synthesized profile to /onboarding
 
 
 ## M4 — Job inbox + pipeline run + SSE progress  (waiting on M3) — MVP CLOSER

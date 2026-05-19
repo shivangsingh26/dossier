@@ -51,3 +51,14 @@ export async function fetchMe(): Promise<MeResult> {
   const account = (await res.json()) as Account;
   return { kind: "ok", account };
 }
+
+export async function fetchPersonaState(): Promise<{ synthesized: boolean } | null> {
+  let res: Response;
+  try {
+    res = await authedFetch("/persona/state");
+  } catch {
+    return null;
+  }
+  if (!res.ok) return null;
+  return res.json();
+}
