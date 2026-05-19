@@ -26,7 +26,11 @@ export const TargetsSchema = z.object({
   }),
 });
 
-export type TargetsForm = z.infer<typeof TargetsSchema>;
+// Use z.input for form values (matches the shape the user fills in,
+// with defaulted fields treated as optional). z.output is what arrives
+// after parse — both layered to keep useForm + onSubmit consistent.
+export type TargetsForm = z.input<typeof TargetsSchema>;
+export type TargetsFormParsed = z.output<typeof TargetsSchema>;
 
 export const QuizQuestionSchema = z.object({
   id: z.string(),
