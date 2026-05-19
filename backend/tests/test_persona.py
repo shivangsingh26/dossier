@@ -112,6 +112,85 @@ def test_get_state_reports_progress(active_user):
     }
 
 
+def test_get_quiz_questions_returns_sdk_set(active_user):
+    from dossier_sdk.agents.persona_builder import INTERVIEW_QUESTIONS
+
+    client = _client_for(active_user["clerk_id"])
+    with patch("dossier_api.deps._verify_clerk_jwt", return_value=active_user["clerk_id"]):
+        r = client.get("/persona/quiz-questions", headers={"Authorization": "Bearer t"})
+    assert r.status_code == 200
+    body = r.json()
+    assert len(body["questions"]) == len(INTERVIEW_QUESTIONS)
+    assert {"id", "question", "hint"} <= set(body["questions"][0].keys())
+
+
+def test_post_quiz_answers_saves_dict(active_user):
+    payload = {"answers": {f"q{i}": f"answer {i}" for i in range(13)}}
+    client = _client_for(active_user["clerk_id"])
+    with patch("dossier_api.deps._verify_clerk_jwt", return_value=active_user["clerk_id"]):
+        r = client.post(
+            "/persona/quiz-answers",
+            headers={"Authorization": "Bearer t"},
+            json=payload,
+        )
+    assert r.status_code == 200
+    saved = active_user["profile_root"] / active_user["slug"] / "quiz_answers.json"
+    assert json.loads(saved.read_text())["q0"] == "answer 0"
+
+
+def test_finalize_requires_prereqs(active_user):
+    client = _client_for(active_user["clerk_id"])
+    with patch("dossier_api.deps._verify_clerk_jwt", return_value=active_user["clerk_id"]):
+        r = client.post("/persona/finalize", headers={"Authorization": "Bearer t"})
+    assert r.status_code == 400
+
+
+def test_finalize_enqueues_run_when_ready(active_user):
+    slug = active_user["slug"]
+    root = active_user["profile_root"] / slug
+    (root / "raw").mkdir(parents=True, exist_ok=True)
+    (root / "raw" / "resume.pdf").write_bytes(b"%PDF fake")
+    (root / "questionnaire.json").write_text(json.dumps({"target": {"min_salary_lpa": 25}}))
+    (root / "quiz_answers.json").write_text(json.dumps({"q1": "a"}))
+    client = _client_for(active_user["clerk_id"])
+    with patch("dossier_api.deps._verify_clerk_jwt", return_value=active_user["clerk_id"]):
+        r = client.post("/persona/finalize", headers={"Authorization": "Bearer t"})
+    assert r.status_code == 202, r.text
+    body = r.json()
+    assert "run_id" in body
+    assert body["status"] == "queued"
+
+
+def test_patch_persona_merges_into_profile(active_user):
+    slug = active_user["slug"]
+    slug_dir = active_user["profile_root"] / slug
+    slug_dir.mkdir(exist_ok=True)
+    initial = {"identity": {"name": "Old"}, "target": {"min_salary_lpa": 25}}
+    (slug_dir / "profile.json").write_text(json.dumps(initial))
+    client = _client_for(active_user["clerk_id"])
+    with patch("dossier_api.deps._verify_clerk_jwt", return_value=active_user["clerk_id"]):
+        r = client.patch(
+            "/persona",
+            headers={"Authorization": "Bearer t"},
+            json={"patch": {"identity": {"name": "New"}}},
+        )
+    assert r.status_code == 200
+    after = json.loads((slug_dir / "profile.json").read_text())
+    assert after["identity"]["name"] == "New"
+    assert after["target"]["min_salary_lpa"] == 25
+
+
+def test_patch_persona_returns_404_if_no_profile(active_user):
+    client = _client_for(active_user["clerk_id"])
+    with patch("dossier_api.deps._verify_clerk_jwt", return_value=active_user["clerk_id"]):
+        r = client.patch(
+            "/persona",
+            headers={"Authorization": "Bearer t"},
+            json={"patch": {"identity": {"name": "x"}}},
+        )
+    assert r.status_code == 404
+
+
 def test_get_persona_returns_profile_json_when_present(active_user):
     fake_profile = {"identity": {"name": "Test"}, "target": {"min_salary_lpa": 25}}
     slug_dir = active_user["profile_root"] / active_user["slug"]

@@ -59,6 +59,17 @@ def save_quiz_answers(slug: str, data: dict) -> None:
 MAX_PDF_BYTES = 10 * 1024 * 1024  # 10MB per spec §13
 
 
+def deep_merge(base: dict, overlay: dict) -> dict:
+    """Recursively merge overlay into base. overlay wins on conflicts."""
+    out = dict(base)
+    for k, v in overlay.items():
+        if isinstance(v, dict) and isinstance(out.get(k), dict):
+            out[k] = deep_merge(out[k], v)
+        else:
+            out[k] = v
+    return out
+
+
 def save_uploaded_pdf(slug: str, file_kind: str, filename: str, content: bytes) -> Path:
     """Save <content> to profile/{slug}/raw/<filename>. Returns path."""
     if len(content) > MAX_PDF_BYTES:

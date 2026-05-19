@@ -11,7 +11,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from dossier_api.db import init_db
-from dossier_api.routers import health, me, persona, webhooks
+from dossier_api.routers import health, me, persona, pipeline, webhooks
 from dossier_api.settings import get_settings
 
 logging.basicConfig(
@@ -44,4 +44,5 @@ app.add_middleware(
 app.include_router(health.router)
 app.include_router(me.router)
 app.include_router(persona.router)
+app.include_router(pipeline.router)
 app.include_router(webhooks.router)

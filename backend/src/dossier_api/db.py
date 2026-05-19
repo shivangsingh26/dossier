@@ -160,6 +160,54 @@ def update_last_login(clerk_id: str, db_path: Path | None = None) -> None:
         )
 
 
+def enqueue_pipeline_run(
+    *, user_id: str, agent: str, credits_cost: int = 0,
+    parent_run_id: str | None = None, db_path: Path | None = None,
+) -> dict[str, Any]:
+    """Insert a queued pipeline_runs row. Returns the row."""
+    run_id = str(uuid.uuid4())
+    with _connect(db_path) as conn:
+        conn.execute(
+            """INSERT INTO pipeline_runs
+               (run_id, user_id, parent_run_id, agent, status, credits_cost)
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            (run_id, user_id, parent_run_id, agent, "queued", credits_cost),
+        )
+    return get_run(run_id, db_path=db_path)  # type: ignore[return-value]
+
+
+def get_run(run_id: str, db_path: Path | None = None) -> dict[str, Any] | None:
+    with _connect(db_path) as conn:
+        row = conn.execute(
+            "SELECT * FROM pipeline_runs WHERE run_id = ?", (run_id,),
+        ).fetchone()
+    return _row_to_dict(row)
+
+
+def mark_run_completed(
+    run_id: str, *, output_summary: dict[str, Any] | None = None,
+    db_path: Path | None = None,
+) -> None:
+    import json as _json
+    with _connect(db_path) as conn:
+        conn.execute(
+            """UPDATE pipeline_runs
+               SET status='completed', finished_at=?, output_summary_json=?
+               WHERE run_id=?""",
+            (_now(), _json.dumps(output_summary or {}), run_id),
+        )
+
+
+def mark_run_failed(run_id: str, *, error: str, db_path: Path | None = None) -> None:
+    with _connect(db_path) as conn:
+        conn.execute(
+            """UPDATE pipeline_runs
+               SET status='failed', finished_at=?, error=?
+               WHERE run_id=?""",
+            (_now(), error, run_id),
+        )
+
+
 def log_credit_change(
     *, user_id: str, delta: int, reason: str, run_id: str | None = None,
     db_path: Path | None = None,
