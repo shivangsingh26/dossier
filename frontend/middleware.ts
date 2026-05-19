@@ -1,3 +1,4 @@
+import { NextResponse } from "next/server";
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
 const isProtectedRoute = createRouteMatcher([
@@ -17,6 +18,11 @@ export default clerkMiddleware(async (auth, req) => {
   if (isProtectedRoute(req)) {
     await auth.protect();
   }
+  // Forward x-pathname into the request so RSC `headers()` can read it.
+  // Setting on response headers alone is invisible to Server Components.
+  const requestHeaders = new Headers(req.headers);
+  requestHeaders.set("x-pathname", req.nextUrl.pathname);
+  return NextResponse.next({ request: { headers: requestHeaders } });
 });
 
 export const config = {
