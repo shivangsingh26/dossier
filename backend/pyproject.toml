@@ -17,6 +17,7 @@ dependencies = [
     "sse-starlette>=2.1.0",
     "fasteners>=0.19",
     "dossier-sdk",
+    "python-multipart>=0.0.29",
 ]
 
 [dependency-groups]
